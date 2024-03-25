@@ -4,10 +4,11 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include/SDL2"
+                "/usr/include/SDL2",
+                "/usr/local/include/kissfft"
             ],
             "compilerPath": "/bin/g++",
-			"cppStandard": "gnu++23",
+            "cppStandard": "gnu++23",
             "intelliSenseMode": "linux-gcc-x64"
         }
     ],
