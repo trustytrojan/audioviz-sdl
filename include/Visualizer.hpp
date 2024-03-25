@@ -5,13 +5,14 @@
 class Visualizer
 {
 	bool running = true;
-	SDL2pp::Window window;
-	MyRenderer renderer;
+	int time = 0;
 
-	void handleEvent(const SDL_Event &event);
 	void handleEvents();
 
 public:
-	Visualizer(const int w, const int h);
+	SDL2pp::Window window;
+	MyRenderer renderer;
+
+	Visualizer();
 	void start();
 };

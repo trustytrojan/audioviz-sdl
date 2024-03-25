@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -Wextra -O3
+CFLAGS = -Wall -Wextra
 INCLUDE = -I/usr/include/SDL2
 LDLIBS = -lSDL2 -lSDL2_gfx -lSDL2pp
 OBJDIR = obj
