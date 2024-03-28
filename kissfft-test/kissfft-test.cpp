@@ -2,17 +2,11 @@
 #include <unistd.h>
 
 #include <spline.hpp>
-#include <sndfile.h>
 #include <kiss_fft.h>
 #include <kiss_fftr.h>
 #include <portaudio.h>
 #include <argparse/argparse.hpp>
-
-extern "C"
-{
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-}
+#include <sndfile.hh>
 
 using argparse::ArgumentParser;
 
@@ -149,7 +143,7 @@ class PortAudio
 {
 	struct Error : std::runtime_error
 	{
-		Error(const char *const s) : std::runtime_error(s) {}
+		Error(const std::string &s) : std::runtime_error("portaudio: " + s) {}
 	};
 
 	class Stream
@@ -208,18 +202,14 @@ void _main(const Args &args)
 	const auto [audio_file, fft_size, multiplier, spectrum_char, scale] = args.tuple();
 
 	// open audio file
-	SF_INFO sfinfo;
-	auto file = sf_open(audio_file.c_str(), SFM_READ, &sfinfo);
-
-	if (!file)
-		throw std::runtime_error(sf_strerror(file));
+	SndfileHandle sf(audio_file);
 
 	// kissfft initialization
 	const auto cfg = kiss_fftr_alloc(fft_size, 0, NULL, NULL);
 
 	// initialize PortAudio, create stream
 	PortAudio pa;
-	const auto pa_stream = pa.stream(0, sfinfo.channels, paFloat32, sfinfo.samplerate, fft_size, NULL, NULL);
+	const auto pa_stream = pa.stream(0, sf.channels(), paFloat32, sf.samplerate(), fft_size, NULL, NULL);
 
 	const int freqdata_len = (fft_size / 2) + 1;
 	const auto fftsize_inv = multiplier / fft_size;
@@ -227,7 +217,7 @@ void _main(const Args &args)
 	// arrays to store fft and audio data
 	float timedata[fft_size];
 	kiss_fft_cpx freqdata[freqdata_len];
-	float buffer[fft_size * sfinfo.channels];
+	float buffer[fft_size * sf.channels()];
 
 	// get terminal size, initialize amplitudes array
 	TerminalSize tsize;
@@ -253,7 +243,7 @@ void _main(const Args &args)
 
 		{ // read audio into buffer, write to output stream to play
 			// sf_readf_float reads FRAMES, where each FRAME is a COLLECTION of samples, one FOR EACH CHANNEL.
-			const auto frames_read = sf_readf_float(file, buffer, fft_size);
+			const auto frames_read = sf.readf(buffer, fft_size);
 
 			// break on end of file
 			if (!frames_read)
@@ -268,9 +258,8 @@ void _main(const Args &args)
 		}
 
 		// only consider the last channel (for now)
-		// BEFORE FFT: apply hann window function
 		for (int i = 0; i < fft_size; ++i)
-			timedata[i] = buffer[i * sfinfo.channels];
+			timedata[i] = buffer[i * sf.channels()];
 
 		// perform fft: frequency range to amplitude values are stored in freqdata
 		kiss_fftr(cfg, timedata, freqdata);
@@ -327,7 +316,6 @@ void _main(const Args &args)
 
 	// resource cleanup
 	kiss_fftr_free(cfg);
-	sf_close(file);
 }
 
 int main(const int argc, const char *const *const argv)
