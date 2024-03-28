@@ -1,4 +1,6 @@
 bin
 obj
-a.out
+*.out
+*.o
 .vscode/settings.json
+Music

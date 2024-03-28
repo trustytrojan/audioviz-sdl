@@ -1,18 +1,18 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <iostream>
-#include <cmath>
-#include <vector>
-#include <memory>
-#include <cstdlib>
-#include <array>
-
+#include <spline.hpp>
 #include <sndfile.h>
 #include <kiss_fft.h>
 #include <kiss_fftr.h>
 #include <portaudio.h>
 #include <argparse/argparse.hpp>
+
+extern "C"
+{
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+}
 
 using argparse::ArgumentParser;
 
@@ -50,7 +50,8 @@ struct Args : private ArgumentParser
 	};
 
 	std::string audio_file;
-	int fft_size, half_size;
+	int fft_size;
+	float multiplier;
 	char spectrum_char;
 	Scale scale;
 
@@ -60,40 +61,44 @@ struct Args : private ArgumentParser
 		add_argument("audio_file")
 			.help("audio file to visualize and play");
 		add_argument("-n", "--sample-size")
-			.help("number of samples (or frames of samples) to process at a time; higher -> increases accuracy, lower -> increases responsiveness")
-			.default_value(1024)
+			.help("number of samples (or frames of samples) to process at a time\n- higher -> increases accuracy\n- lower -> increases responsiveness")
+			.default_value(2048)
 			.scan<'i', int>()
 			.validate();
 		add_argument("-c", "--spectrum-char")
 			.help("character to render the spectrum with")
 			.default_value("#");
-		add_argument("--scale")
+		add_argument("-s", "--scale")
 			.help("spectrum frequency scale")
 			.choices("linear", "log", "sqrt")
-			.nargs(1)
-			.default_value("linear")
+			.default_value("log")
 			.validate();
-
+		add_argument("-m", "--multiplier")
+			.help("multiply spectrum amplitude by this amount")
+			.default_value(3.f)
+			.scan<'f', float>()
+			.validate();
 		try
 		{
 			parse_args(argc, argv);
 		}
 		catch (const std::exception &e)
 		{
-			// print help to stderr
-			std::cerr << *this;
+			// print error and help to stderr
+			std::cerr << argv[0] << ": " << e.what() << '\n'
+					  << *this;
 
-			// rethrow to main
-			throw std::runtime_error(e.what());
+			// just exit here since we don't want to print anything after the help
+			exit(EXIT_FAILURE);
 		}
 
 		audio_file = get("audio_file");
 		if ((fft_size = get<int>("-n")) & 1)
 			throw std::runtime_error("sample size must be even!");
-		half_size = fft_size / 2;
 		spectrum_char = get("-c").front();
+		multiplier = get<float>("-m");
 
-		const auto &scale = get("--scale");
+		const auto &scale = get("-s");
 		if (scale == "linear")
 			this->scale = Scale::LINEAR;
 		else if (scale == "log")
@@ -103,43 +108,129 @@ struct Args : private ArgumentParser
 		else
 			throw std::runtime_error("impossible!!!!");
 	}
+
+	std::tuple<const std::string &, int, float, char, Scale> tuple() const
+	{
+		return {audio_file, fft_size, multiplier, spectrum_char, scale};
+	}
+};
+
+struct SmoothedAmplitudes : std::vector<float>
+{
+	SmoothedAmplitudes(const std::vector<float> &amplitudes)
+		: std::vector<float>(amplitudes.size())
+	{
+		// Separate the nonzero values and their indices
+		std::vector<double> nonzero_values;
+		std::vector<double> indices;
+
+		for (int i = 0; i < (int)size(); ++i)
+		{
+			if (!amplitudes[i])
+				continue;
+			nonzero_values.push_back(amplitudes[i]);
+			indices.push_back(i);
+		}
+
+		// Create a cubic spline interpolation based on the nonzero values
+		tk::spline s(indices, nonzero_values);
+
+		// Use the cubic spline to estimate a value for each position in the list
+		for (int i = 0; i < (int)size(); ++i)
+			at(i) = amplitudes[i] ? amplitudes[i] : s(i);
+	}
+};
+
+class PortAudio
+{
+	struct Error : std::runtime_error
+	{
+		Error(const char *const s) : std::runtime_error(s) {}
+	};
+
+	class Stream
+	{
+		PaStream *stream;
+
+	public:
+		Stream(int numInputChannels, int numOutputChannels, PaSampleFormat sampleFormat, double sampleRate, unsigned long framesPerBuffer, PaStreamCallback *streamCallback, void *userData)
+		{
+			PaError err;
+			if ((err = Pa_OpenDefaultStream(&stream, numInputChannels, numOutputChannels, sampleFormat, sampleRate, framesPerBuffer, streamCallback, userData)))
+				throw Error(Pa_GetErrorText(err));
+			if ((err = Pa_StartStream(stream)))
+				throw Error(Pa_GetErrorText(err));
+		}
+
+		~Stream()
+		{
+			PaError err;
+			if ((err = Pa_StopStream(stream)))
+				std::cerr << Pa_GetErrorText(err) << '\n';
+			if ((err = Pa_CloseStream(stream)))
+				std::cerr << Pa_GetErrorText(err) << '\n';
+		}
+
+		PaError write(const void *const buffer, const size_t n_frames) const
+		{
+			return Pa_WriteStream(stream, buffer, n_frames);
+		}
+	};
+
+public:
+	PortAudio()
+	{
+		PaError err;
+		if ((err = Pa_Initialize()))
+			throw Error(Pa_GetErrorText(err));
+	}
+
+	~PortAudio()
+	{
+		PaError err;
+		if ((err = Pa_Terminate()))
+			std::cerr << Pa_GetErrorText(err) << '\n';
+	}
+
+	Stream stream(int numInputChannels, int numOutputChannels, PaSampleFormat sampleFormat, double sampleRate, unsigned long framesPerBuffer, PaStreamCallback *streamCallback = NULL, void *userData = NULL)
+	{
+		return Stream(numInputChannels, numOutputChannels, sampleFormat, sampleRate, framesPerBuffer, streamCallback, userData);
+	}
 };
 
 void _main(const Args &args)
 {
+	// destructure args
+	const auto [audio_file, fft_size, multiplier, spectrum_char, scale] = args.tuple();
+
 	// open audio file
 	SF_INFO sfinfo;
-	const auto file = sf_open(args.audio_file.c_str(), SFM_READ, &sfinfo);
+	auto file = sf_open(audio_file.c_str(), SFM_READ, &sfinfo);
+
 	if (!file)
-		throw std::runtime_error("failed to open audio file: " + args.audio_file);
+		throw std::runtime_error(sf_strerror(file));
 
 	// kissfft initialization
-	const auto cfg = kiss_fftr_alloc(args.fft_size, 0, NULL, NULL);
+	const auto cfg = kiss_fftr_alloc(fft_size, 0, NULL, NULL);
 
-	// PortAudio initialization
-	PaError err;
+	// initialize PortAudio, create stream
+	PortAudio pa;
+	const auto pa_stream = pa.stream(0, sfinfo.channels, paFloat32, sfinfo.samplerate, fft_size, NULL, NULL);
 
-	if ((err = Pa_Initialize()))
-		throw std::runtime_error(Pa_GetErrorText(err));
-
-	PaStream *stream;
-
-	if ((err = Pa_OpenDefaultStream(&stream, 0, sfinfo.channels, paFloat32, sfinfo.samplerate, args.fft_size, NULL, NULL)))
-		throw std::runtime_error(Pa_GetErrorText(err));
-
-	if ((err = Pa_StartStream(stream)))
-		throw std::runtime_error(Pa_GetErrorText(err));
+	const int freqdata_len = (fft_size / 2) + 1;
+	const auto fftsize_inv = multiplier / fft_size;
 
 	// arrays to store fft and audio data
-	float timedata[args.fft_size];
-	kiss_fft_cpx freqdata[args.half_size + 1];
-	float buffer[args.fft_size * sfinfo.channels];
+	float timedata[fft_size];
+	kiss_fft_cpx freqdata[freqdata_len];
+	float buffer[fft_size * sfinfo.channels];
 
 	// get terminal size, initialize amplitudes array
 	TerminalSize tsize;
 	std::vector<float> amplitudes(tsize.width);
 
-	const auto logmax = log(args.half_size + 1);
+	const auto logmax = log(freqdata_len);
+	const auto sqrtmax = sqrt(freqdata_len);
 
 	// start reading, playing, and processing audio
 	while (1)
@@ -158,18 +249,23 @@ void _main(const Args &args)
 
 		{ // read audio into buffer, write to output stream to play
 			// sf_readf_float reads FRAMES, where each FRAME is a COLLECTION of samples, one FOR EACH CHANNEL.
-			const auto frames_read = sf_readf_float(file, buffer, args.fft_size);
+			const auto frames_read = sf_readf_float(file, buffer, fft_size);
 
 			// break on end of file
 			if (!frames_read)
 				break;
 
 			// play the audio as it is read
-			Pa_WriteStream(stream, buffer, frames_read);
+			pa_stream.write(buffer, frames_read);
+
+			// we can't process anything less than fft_size
+			if (frames_read != fft_size)
+				break;
 		}
 
-		// only consider the last channel
-		for (int i = 0; i < args.fft_size; ++i)
+		// only consider the last channel (for now)
+		// BEFORE FFT: apply hann window function
+		for (int i = 0; i < fft_size; ++i)
 			timedata[i] = buffer[i * sfinfo.channels];
 
 		// perform fft: frequency range to amplitude values are stored in freqdata
@@ -180,21 +276,21 @@ void _main(const Args &args)
 			a = 0;
 
 		// group up freqdata into bigger ranges by summing up amplitudes for the same calculated index
-		for (auto i = 0; i <= args.half_size; ++i)
+		for (auto i = 0; i < freqdata_len; ++i)
 		{
 			const auto [re, im] = freqdata[i];
 			const float amplitude = sqrt((re * re) + (im * im));
 			int index;
-			switch (args.scale)
+			switch (scale)
 			{
 			case Args::Scale::LINEAR:
-				index = ((float)i / (args.half_size + 1)) * width;
+				index = (float)i / freqdata_len * width;
 				break;
 			case Args::Scale::LOG:
-				index = (log(i ? i : 1) / logmax) * width;
+				index = log(i + 1) / logmax * width;
 				break;
 			case Args::Scale::SQRT:
-				index = sqrt(i) / sqrt(args.half_size + 1) * width;
+				index = sqrt(i) / sqrtmax * width;
 				break;
 			default:
 				throw std::runtime_error("impossible!!!!!!!");
@@ -205,11 +301,14 @@ void _main(const Args &args)
 		// clear the terminal
 		std::cout << "\ec";
 
+		if (args.scale != Args::Scale::LINEAR)
+			amplitudes = SmoothedAmplitudes(amplitudes);
+
 		// print the spectrum
 		for (int i = 0; i < width; ++i)
 		{
 			// calculate height based on amplitude
-			int bar_height = 0.001 * amplitudes[i] * height;
+			int bar_height = fftsize_inv * amplitudes[i] * height;
 
 			// move cursor to (height, i)
 			// remember that (0, 0) in a terminal is the top-left corner, so positive y moves the cursor down.
@@ -218,20 +317,11 @@ void _main(const Args &args)
 			// draw the bar upwards `bar_height` high
 			for (int j = 0; j < bar_height; ++j)
 				// print character, move cursor up 1, move cursor left 1
-				std::cout << args.spectrum_char << "\e[1A\e[1D";
+				std::cout << spectrum_char << "\e[1A\e[1D";
 		}
 	}
 
 	// resource cleanup
-	if ((err = Pa_StopStream(stream)))
-		throw std::runtime_error(Pa_GetErrorText(err));
-
-	if ((err = Pa_CloseStream(stream)))
-		throw std::runtime_error(Pa_GetErrorText(err));
-
-	if ((err = Pa_Terminate()))
-		throw std::runtime_error(Pa_GetErrorText(err));
-
 	kiss_fftr_free(cfg);
 	sf_close(file);
 }
@@ -241,6 +331,11 @@ int main(const int argc, const char *const *const argv)
 	try
 	{
 		_main(Args(argc, argv));
+	}
+	catch (const char *const e)
+	{
+		std::cerr << argv[0] << ": " << e << '\n';
+		return EXIT_FAILURE;
 	}
 	catch (const std::exception &e)
 	{
