@@ -117,7 +117,7 @@ struct Args : private ArgumentParser
 
 struct SmoothedAmplitudes : std::vector<float>
 {
-	SmoothedAmplitudes(const std::vector<float> &amplitudes)
+	SmoothedAmplitudes(std::vector<float> &amplitudes)
 		: std::vector<float>(amplitudes.size())
 	{
 		// Separate the nonzero values (y's) and their indices (x's)
@@ -141,7 +141,7 @@ struct SmoothedAmplitudes : std::vector<float>
 				at(i) = amplitudes[i] ? amplitudes[i] : s(i);
 		}
 		else
-			*this = amplitudes;
+			this->swap(amplitudes);
 	}
 };
 
@@ -335,11 +335,6 @@ int main(const int argc, const char *const *const argv)
 	try
 	{
 		_main(Args(argc, argv));
-	}
-	catch (const char *const e)
-	{
-		std::cerr << argv[0] << ": " << e << '\n';
-		return EXIT_FAILURE;
 	}
 	catch (const std::exception &e)
 	{
