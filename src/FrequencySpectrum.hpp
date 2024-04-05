@@ -3,14 +3,7 @@
 #include <stdexcept>
 #include <vector>
 #include "spline.hpp"
-
-#ifdef KISSFFT
-#include "KissFftr.hpp"
-#endif
-
-#ifdef FFTW
-#include "Fftw1d.hpp"
-#endif
+#include "fftwf_dft_r2c_1d.hpp"
 
 class FrequencySpectrum
 {
@@ -53,15 +46,8 @@ private:
 	int nth_root = 2;
 	float nth_root_inverse = 1.f / nth_root;
 
-#ifdef KISSFFT
-	KissFftr kf = KissFftr(fft_size);
-	std::vector<kiss_fft_cpx> freqdata = std::vector<kiss_fft_cpx>(fft_size / 2 + 1);
-#endif
-
-#ifdef FFTW
-	FftwDftR2c1d fftw = FftwDftR2c1d(fft_size);
-	std::vector<std::array<double, 2>> freqdata = std::vector<std::array<double, 2>>(fft_size / 2 + 1);
-#endif
+	// fftw initialization
+	fftwf_dft_r2c_1d fftw = fftwf_dft_r2c_1d(fft_size);
 
 	// interpolation
 	tk::spline spline;
@@ -71,7 +57,7 @@ private:
 	Scale scale = Scale::LOG;
 
 	// method for accumulating amplitudes in frequency bins
-	AccumulationMethod am = AccumulationMethod::SUM;
+	AccumulationMethod am = AccumulationMethod::MAX;
 
 	// window function
 	WindowFunction wf = WindowFunction::BLACKMAN;
@@ -79,10 +65,11 @@ private:
 	// struct to hold the "max"s used in `calc_index_ratio`
 	struct
 	{
-		double log, sqrt, cbrt, nthroot;
+		double linear, log, sqrt, cbrt, nthroot;
 		void set(const FrequencySpectrum &fs)
 		{
-			const auto max = fs.freqdata.size();
+			const auto max = fs.fftw.get_output_size();
+			linear = max;
 			log = ::log(max);
 			sqrt = ::sqrt(max);
 			cbrt = ::cbrt(max);
@@ -108,10 +95,7 @@ public:
 	 */
 	FrequencySpectrum &set_fft_size(const int fft_size)
 	{
-#ifdef KISSFFT
-		kf.set_fft_size(fft_size);
-#endif
-		freqdata.resize(fft_size / 2 + 1);
+		fftw.set_n(fft_size);
 		fftsize_inv = 1. / fft_size;
 		scale_max.set(*this);
 		return *this;
@@ -176,41 +160,27 @@ public:
 		return *this;
 	}
 
-	/**
-	 * Render the spectrum for `fft_size` samples of input. This was the amount set in the constructor or in `set_fft_size`.
-	 * @param timedata Pointer to wave data. Must be of size `fft_size`, otherwise dire things may happen.
-	 * @param spectrum Output vector to store the rendered spectrum.
-	 *                 The size of this vector is used for bin-mapping of frequencies,
-	 *                 so make sure you set it correctly.
-	 * @throws `std::invalid_argument` if `timedata` is null
-	 */
-	void render(float *const timedata, std::vector<float> &spectrum)
+	float *input_array()
 	{
-		apply_window_func(timedata);
+		return fftw.get_input();
+	}
 
-		// perform fft: frequency range to amplitude values are stored in freqdata
-		// throws if either argument is null
-#ifdef KISSFFT
-		kf.transform(timedata, freqdata.data());
-#endif
-
-#ifdef FFTW
-		const auto output = fftw.execute(timedata);
-
-		for (int i = 0; i < (int)freqdata.size(); ++i)
-		{
-			freqdata[i][0] = output[i][0];
-			freqdata[i][1] = output[i][1];
-		}
-#endif
+	// it is assumed that `input_array()` holds your input wave data!
+	// you must write your input data to `input_array()` before calling `render`!!!!!!!!
+	void render(std::vector<float> &spectrum)
+	{
+		apply_window_func(input_array());
+		fftw.execute();
 
 		// zero out array since we are accumulating
 		std::ranges::fill(spectrum, 0);
 
+		const auto output = fftw.get_output();
+
 		// map frequency bins of freqdata to spectrum
-		for (auto i = 0; i < (int)freqdata.size(); ++i)
+		for (int i = 0; i < fftw.get_output_size(); ++i)
 		{
-			const auto [re, im] = freqdata[i];
+			const auto [re, im] = output[i];
 			const float amplitude = sqrt((re * re) + (im * im));
 			const auto index = calc_index(i, spectrum.size());
 
@@ -278,7 +248,7 @@ private:
 		switch (scale)
 		{
 		case Scale::LINEAR:
-			return i / freqdata.size();
+			return i / scale_max.linear;
 		case Scale::LOG:
 			// TODO: make log curve shift with fft_size (better approach: horizontal shrink)
 			// this will avoid the shifting down of all frequencies as fft_size decreases.
@@ -287,7 +257,7 @@ private:
 			switch (nth_root)
 			{
 			case 1:
-				return i / freqdata.size();
+				return i / scale_max.linear;
 			case 2:
 				return sqrt(i) / scale_max.sqrt;
 			case 3:

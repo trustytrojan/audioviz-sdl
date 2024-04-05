@@ -10,7 +10,7 @@ class MyRenderer : public SDL2pp::Renderer
 	SDL_Renderer *const _r;
 
 public:
-	MyRenderer(SDL2pp::Window &window, const SDL_RendererFlags flags)
+	MyRenderer(SDL2pp::Window &window, const Uint32 flags)
 		: SDL2pp::Renderer(window, -1, SDL_RENDERER_ACCELERATED | flags), _r(Get()) {}
 
 	void fillScreen(const Uint8 r = 0, const Uint8 g = 0, const Uint8 b = 0, const Uint8 a = 255)

@@ -1,19 +1,10 @@
 CC = g++
 CFLAGS = -Wall -Wextra -std=gnu++23 $(if $(release),-O3,-g)
 INCLUDE = -I/usr/include/SDL2
-LDLIBS = -lsndfile -lSDL2 -lSDL2_gfx -lSDL2pp -lportaudio
+LDLIBS = -lsndfile -lfftw3f -lSDL2 -lSDL2_gfx -lSDL2pp -lportaudio
 BIN = bin/audioviz
 
-ifeq ($(FFT),kissfft)
-CFLAGS += -DKISSFFT
-INCLUDE += -I/usr/local/include/kissfft
-LDLIBS += -lkissfft-float-openmp
-endif
-
-ifeq ($(FFT),fftw)
-CFLAGS += -DFFTW
-LDLIBS += -lfftw3
-endif
+CFLAGS += $(APPEND)
 
 compile:
 	mkdir -p bin

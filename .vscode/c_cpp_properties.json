@@ -7,7 +7,6 @@
 				"/usr/include/SDL2",
 				"/usr/local/include/kissfft"
 			],
-			"compilerArgs": ["-DFFTW"],
 			"compilerPath": "/bin/g++",
 			"cppStandard": "gnu++23",
 			"intelliSenseMode": "linux-gcc-x64"

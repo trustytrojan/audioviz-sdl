@@ -5,7 +5,7 @@
 int main()
 {
 	// Uncomment this to enforce Wayland instead of X11
-	// setenv("SDL_VIDEODRIVER", "wayland", 1);
+	setenv("SDL_VIDEODRIVER", "wayland", 1);
 
 	SDL2pp::SDL sdl(SDL_INIT_VIDEO);
 	Visualizer().start();
