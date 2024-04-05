@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "../include/Visualizer.hpp"
+#include "Visualizer.hpp"
 
 int main()
 {
