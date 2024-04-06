@@ -22,7 +22,7 @@
  * ---------------------------------------------------------------------
  *
  */
-
+#pragma once
 
 #ifndef TK_SPLINE_H
 #define TK_SPLINE_H
@@ -43,6 +43,9 @@
 // into a cpp file if necessary)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
+
+namespace
+{
 
 namespace tk
 {
@@ -934,6 +937,7 @@ std::vector<double> solve_cubic(double a, double b, double c, double d,
 
 } // namespace tk
 
+} // namespace
 
 #pragma GCC diagnostic pop
 

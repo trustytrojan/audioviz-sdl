@@ -1,21 +1,36 @@
 CC = g++
-CFLAGS = -Wall -Wextra -std=gnu++23 $(if $(release),-O3,-g)
-INCLUDE = -I/usr/include/SDL2
+CFLAGS = -Wall -Wextra -Wno-subobject-linkage -std=gnu++23 $(if $(release),-O3,-g)
+INCLUDE = -Iinclude -I/usr/include/SDL2
 LDLIBS = -lsndfile -lfftw3f -lSDL2 -lSDL2_gfx -lSDL2pp -lportaudio
-BIN = bin/audioviz
+OBJDIR = obj
+BINDIR = bin
+SRCDIR = src
 
-compile:
-	mkdir -p bin
-	$(CC) $(CFLAGS) $(INCLUDE) $(LDLIBS) src/main.cpp -o $(BIN)
+# List of source files
+SRCS = $(wildcard $(SRCDIR)/*.cpp)
+# List of object files
+OBJS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SRCS))
 
-run: compile
-	bin/audioviz
+# Default target
+all: clear makedirs $(BINDIR)/a.out
 
-vg: compile
-	valgrind bin/audioviz
+# Linking
+$(BINDIR)/a.out: $(OBJS)
+	$(CC) $^ $(LDLIBS) -o $@
 
-gdb: compile
-	gdb bin/audioviz
+# Compilation
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
-install: compile
-	sudo cp $(BIN) /usr/local/bin
+# Create necessary directories
+makedirs:
+	mkdir -p $(BINDIR) $(OBJDIR)
+
+# Clean up
+clean:
+	rm -rf $(BINDIR) $(OBJDIR)
+
+clear:
+	clear
+
+.PHONY: all makedirs clean

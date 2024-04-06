@@ -3,8 +3,8 @@
 		{
 			"name": "Linux",
 			"includePath": [
-				"${workspaceFolder}/**",
-				"/usr/include/SDL2"
+				"/usr/include/SDL2",
+				"include"
 			],
 			"compilerPath": "/bin/g++",
 			"cppStandard": "gnu++23",

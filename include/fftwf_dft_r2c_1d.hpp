@@ -32,29 +32,13 @@ public:
 
 	void set_n(const int N)
 	{
-		if (this->N == N)
-			return;
+		if (this->N == N) return;
 		cleanup();
 		init(N);
 	}
 
-	void execute()
-	{
-		fftwf_execute(p);
-	}
-
-	float *get_input()
-	{
-		return in;
-	}
-
-	const fftwf_complex *get_output()
-	{
-		return out;
-	}
-
-	int get_output_size() const
-	{
-		return output_size;
-	}
+	void execute() { fftwf_execute(p); }
+	float *get_input() { return in; }
+	const fftwf_complex *get_output() { return out; }
+	int get_output_size() const { return output_size; }
 };
