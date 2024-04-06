@@ -171,11 +171,10 @@ public:
 	{
 		apply_window_func(input_array());
 		fftw.execute();
+		const auto output = fftw.get_output();
 
 		// zero out array since we are accumulating
 		std::ranges::fill(spectrum, 0);
-
-		const auto output = fftw.get_output();
 
 		// map frequency bins of freqdata to spectrum
 		for (int i = 0; i < fftw.get_output_size(); ++i)

@@ -10,6 +10,7 @@
 #include "FrequencySpectrum.hpp"
 #include "PortAudio.hpp"
 #include "ColorUtils.hpp"
+// #include "VideoEncoder.hpp"
 
 class Visualizer
 {
@@ -26,83 +27,71 @@ public:
 	using AccumulationMethod = FrequencySpectrum::AccumulationMethod;
 	using WindowFunction = FrequencySpectrum::WindowFunction;
 
-private:
-	// general parameters
-	int sample_size = 3000;
-	float multiplier = 5;
-	struct
-	{
-		int width = 10, padding = 5;
-	} pill;
-	int margin = 15;
-
-	int spectrum_width()
-	{
-		return (window.GetWidth() - margin) / pill.width;
-	}
-
-	// SDL2pp window and renderer
-	SDL2pp::Window window;
-	MyRenderer renderer = MyRenderer(window, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
-	// initialize spectrum renderer
-	FrequencySpectrum fs = sample_size;
-
-	// open audio file
-	SndfileHandle sf;
-	bool stereo = (sf.channels() == 2);
-
-	// portaudio initialization
-	PortAudio pa;
-	PortAudio::Stream pa_stream = pa.stream(0, sf.channels(), paFloat32, sf.samplerate(), sample_size);
-
-	// intermediate arrays
-	std::vector<float>
-		audio_buffer = std::vector<float>(sample_size * sf.channels()),
-		spectrum = std::vector<float>(stereo ? (spectrum_width() / 2) : spectrum_width());
-
-	// synchronization
-	const int refresh_rate = [this]
-	{
-		SDL_DisplayMode mode;
-		window.GetDisplayMode(mode);
-		return mode.refresh_rate;
-	}();
-	const int audio_frames_per_video_frame = sf.samplerate() / refresh_rate;
-
-	// color stuff
-	ColorType color_type = ColorType::WHEEL;
-	std::tuple<int, int, int> solid_rgb{255, 0, 255};
-
-	// color wheel rotation
-	struct
-	{
-		float time = 0, rate = 0;
-		std::tuple<float, float, float> hsv{0.9, 0.7, 1};
-	} wheel;
-
-	// for pre-rendering
-	bool prerender = false;
-	std::queue<std::vector<float>> spectrum_queue;
-
-public:
 	// width and height matter if you are pre-rendering!
 	Visualizer(const std::string &audio_file, const int width = 800, const int height = 600)
-		: sf(audio_file),
-		  window("My Audio Visualizer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE) {}
+		: window("My Audio Visualizer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE),
+		  sf(audio_file) {}
 
 	void start()
 	{
 		std::cout << refresh_rate << '\n';
-		std::cout << audio_frames_per_video_frame << '\n';
+		std::cout << audio_frames_per_video_frame() << '\n';
 
 		if (prerender)
 		{
 			prerender_frames();
 			start_prerendered();
+			return;
 		}
-		else
-			start_sync();
+
+		start_sync();
+	}
+
+	void encode_to_video(const std::string &output_file)
+	{
+		const auto width = window.GetWidth(),
+				   height = window.GetHeight();
+		const auto pixel_count = width * height;
+
+		const auto command = "ffmpeg -y "
+							 "-f rawvideo "
+							 "-pix_fmt rgb24 "
+							 "-s:v " +
+							 std::to_string(width) + "x" + std::to_string(height) + " "
+																					"-r " +
+							 std::to_string(refresh_rate) + " "
+															"-i - "
+															"-i 'Music/obsessed (feat. funeral).mp3' "
+															"-c:a copy " +
+							 output_file;
+		const auto ffmpeg = popen(command.c_str(), "w");
+		if (!ffmpeg)
+			throw std::runtime_error(std::string("popen() failed") + strerror(errno));
+
+		std::vector<Uint8> pixels(3 * pixel_count);
+		for (int frame = 0;; ++frame)
+		{
+			const auto frames_read = sf.readf(audio_buffer.data(), sample_size);
+			if (frames_read != sample_size)
+				return;
+			renderer.SetDrawColor().Clear();
+			do_actual_rendering();
+			renderer.ReadPixels(SDL2pp::NullOpt, SDL_PIXELFORMAT_RGB24, pixels.data(), 3 * window.GetWidth());
+			fwrite(pixels.data(), 1, 3 * pixel_count, ffmpeg);
+			sf.seek(audio_frames_per_video_frame() - sample_size, SEEK_CUR);
+		}
+	}
+
+	Visualizer &set_width(const int width)
+	{
+		window.SetSize(width, window.GetHeight());
+		return *this;
+	}
+
+	Visualizer &set_height(const int height)
+	{
+		window.SetSize(window.GetWidth(), height);
+		return *this;
 	}
 
 	/**
@@ -134,6 +123,12 @@ public:
 	Visualizer &set_prerender(bool prerender)
 	{
 		this->prerender = prerender;
+		return *this;
+	}
+
+	Visualizer &set_stereo(bool enabled)
+	{
+		stereo = enabled;
 		return *this;
 	}
 
@@ -195,36 +190,125 @@ public:
 		return *this;
 	}
 
+	Visualizer &set_pill_width(const int width)
+	{
+		pill.width = width;
+		return *this;
+	}
+
+	Visualizer &set_pill_padding(const int padding)
+	{
+		pill.padding = padding;
+		return *this;
+	}
+
+	Visualizer &set_margin(const int margin)
+	{
+		this->margin = margin;
+		return *this;
+	}
+
 private:
-	const int total_frames = sf.frames() / audio_frames_per_video_frame;
+	// general parameters
+	int sample_size = 3000;
+	float multiplier = 5;
+
+	struct
+	{
+		int width = 10, padding = 5;
+	} pill;
+
+	int margin = 15;
+
+	int pill_count() const
+	{
+		return (window.GetWidth() - (2 * margin)) / (pill.width + pill.padding);
+	}
+
+	// SDL2pp window and renderer
+	SDL2pp::Window window;
+	MyRenderer renderer = MyRenderer(window, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+	// initialize spectrum renderer
+	FrequencySpectrum fs = sample_size;
+
+	// open audio file
+	SndfileHandle sf;
+	bool stereo = (sf.channels() == 2);
+
+	// portaudio initialization
+	PortAudio pa;
+	PortAudio::Stream pa_stream = pa.stream(0, sf.channels(), paFloat32, sf.samplerate(), sample_size);
+
+	// intermediate arrays
+	std::vector<float>
+		audio_buffer = std::vector<float>(sample_size * sf.channels()),
+		spectrum = std::vector<float>(stereo ? (pill_count() / 2) : pill_count());
+
+	// synchronization
+	int refresh_rate = [this]
+	{
+		SDL_DisplayMode mode;
+		window.GetDisplayMode(mode);
+		return mode.refresh_rate;
+	}();
+
+	int audio_frames_per_video_frame() const { return sf.samplerate() / refresh_rate; }
+
+	// color stuff
+	ColorType color_type = ColorType::WHEEL;
+	std::tuple<int, int, int> solid_rgb{255, 0, 255};
+
+	// color wheel rotation
+	struct
+	{
+		float time = 0, rate = 0;
+		std::tuple<float, float, float> hsv{0.9, 0.7, 1};
+	} wheel;
+
+	// for pre-rendering
+	bool prerender = false;
+	std::queue<std::vector<float>> spectrum_queue;
+
+	const int total_frames = sf.frames() / audio_frames_per_video_frame();
 
 	void start_sync()
 	{
 		for (int frame = 0;; ++frame)
 		{
 			handleEvents();
+			const auto start = std::chrono::high_resolution_clock::now();
 			const auto frames_read = sf.readf(audio_buffer.data(), sample_size);
 			if (!frames_read)
 				return;
 			try_write_audio_buffer();
 			if (frames_read != sample_size)
 				return;
-			std::cout << "Rendering frame: " << frame << '/' << total_frames << '\r' << std::flush;
-			renderer.SetDrawColor().Clear();
-				for (int i = 1; i <= 2; ++i)
-				{
-					copy_channel_to_input(i);
-					fs.render(spectrum);
-					print_half(i);
-				}
-			else
-			{
-				copy_channel_to_input(1);
-				fs.render(spectrum);
-				render_spectrum_full();
-			}
+			renderer.SetDrawColor(0, 0, 0, 0).Clear();
+			do_actual_rendering();
 			renderer.Present();
-			sf.seek(audio_frames_per_video_frame, SEEK_CUR);
+			sf.seek(audio_frames_per_video_frame() - sample_size, SEEK_CUR);
+			const auto draw_time = std::chrono::high_resolution_clock::now() - start;
+			const auto fps = 1. / std::chrono::duration<double>(draw_time).count();
+			if (!(frame % 5))
+				print_render_stats(frame, draw_time, fps);
+		}
+	}
+
+	void do_actual_rendering()
+	{
+		if (stereo)
+			for (int i = 1; i <= 2; ++i)
+			{
+				copy_channel_to_input(i);
+				fs.render(spectrum);
+				print_half(i);
+			}
+		else
+		{
+			copy_channel_to_input(1);
+			fs.render(spectrum);
+			render_spectrum_full();
 		}
 	}
 
@@ -232,14 +316,26 @@ private:
 	{
 		for (int frame = 0;; ++frame)
 		{
+			const auto start = std::chrono::high_resolution_clock::now();
 			const auto frames_read = sf.readf(audio_buffer.data(), sample_size);
-			copy_channel_to_input(1);
-			fs.render(spectrum);
+			if (frames_read != sample_size)
+				return;
+			do_actual_rendering();
 			spectrum_queue.push(spectrum);
-			std::cout << "Pre-rendering frame: " << frame << '/' << total_frames << '\r' << std::flush;
-			sf.seek(audio_frames_per_video_frame, SEEK_CUR);
+			sf.seek(audio_frames_per_video_frame() - sample_size, SEEK_CUR);
+			const auto draw_time = std::chrono::high_resolution_clock::now() - start;
+			const auto fps = 1. / std::chrono::duration<double>(draw_time).count();
+			if (!(frame % 5))
+				print_render_stats(frame, draw_time, fps);
 		}
-		std::cout << '\n';
+	}
+
+	void print_render_stats(const int frame, const std::chrono::nanoseconds draw_time, const double fps)
+	{
+		std::cout << "\r\e[1A\e[2K\e[1A\e[2K"
+				  << "Frame/Total: " << frame << '/' << total_frames << '\n'
+				  << "Draw time: " << draw_time << '\n'
+				  << "FPS: " << fps;
 	}
 
 	void start_prerendered()
@@ -248,35 +344,29 @@ private:
 		for (int frame = 0; !spectrum_queue.empty(); ++frame)
 		{
 			handleEvents();
-			const auto frames_read = sf.readf(audio_buffer.data(), audio_frames_per_video_frame);
+			const auto frames_read = sf.readf(audio_buffer.data(), audio_frames_per_video_frame());
 			if (!frames_read)
 				return;
 			try_write_audio_buffer();
 			this->spectrum = spectrum_queue.front();
 			spectrum_queue.pop();
 			std::cout << "Presenting frame: " << frame << '/' << total_frames << '\r' << std::flush;
-			clear_render_present();
+			renderer.SetDrawColor(0, 0, 0, 0).Clear();
+			do_actual_rendering();
+			renderer.Present();
 		}
-	}
-
-	void clear_render_present()
-	{
-		renderer.SetDrawColor().Clear();
-		render_spectrum_full();
-		renderer.Present();
 	}
 
 	void try_write_audio_buffer()
 	{
 		try
 		{
-			pa_stream.write(audio_buffer.data(), audio_frames_per_video_frame);
+			pa_stream.write(audio_buffer.data(), audio_frames_per_video_frame());
 		}
 		catch (const PortAudio::Error &e)
 		{
 			if (!strstr(e.what(), "Output underflowed"))
 				throw;
-			std::cerr << "Output underflowed\n";
 		}
 	}
 
@@ -295,7 +385,7 @@ private:
 				{
 				case SDL_WINDOWEVENT_RESIZED:
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
-					spectrum.resize((window.GetWidth() - 30) / 15);
+					spectrum.resize(stereo ? (pill_count() / 2) : pill_count());
 					break;
 				}
 				break;
@@ -313,48 +403,54 @@ private:
 			input[i] = audio_buffer[i * sf.channels() + channel_num];
 	}
 
+	int leftmostPillX() const { return margin + (pill.width / 2); }
+	int pillY() const { return window.GetHeight() - margin - (pill.width / 2); }
+
 	void render_spectrum_full()
 	{
-		const auto leftmostPillX = margin;
-		const auto pillY = window.GetHeight() - margin;
-
 		for (int i = 0; i < (int)spectrum.size(); ++i)
 		{
-			const auto [r, g, b] = apply_wheel_coloring(i, [this](auto i)
+			const auto [r, g, b] = apply_wheel_coloring(i, [this](const int i)
 														{ return (float)i / spectrum.size(); });
 			renderer.drawPillFromBottomRGBA(
-				leftmostPillX + (i * (pill.width + pill.padding)), pillY, pill.width,
+				leftmostPillX() + (i * (pill.width + pill.padding)), pillY(), pill.width,
 				multiplier * abs(spectrum[i]) * window.GetHeight(), r, g, b, 255);
 		}
 	}
 
 	void print_half(int half)
 	{
-		// const auto half_width = spectrum_width() / 2;
-		const auto leftmostPillX = margin;
-		const auto pillY = window.GetHeight() - margin;
-
-		if (half == 1)
-			for (int i = spectrum_width(); i >= 0; --i)
+		const auto half_width = pill_count() / 2;
+		switch (half)
+		{
+		case 1:
+			for (int i = half_width; i >= 0; --i)
 			{
-				const auto [r, g, b] = apply_wheel_coloring(i, [this](auto i)
-															{ return (float)(spectrum_width() - i) / spectrum.size(); });
-				// move_to_column(i);
-				// print_bar(multiplier * spectrum[half_width - i] * tsize.height);
-				renderer.drawPillFromBottomRGBA(
-					leftmostPillX + (i * (pill.width + pill.padding)), pillY, pill.width,
-					multiplier * abs(spectrum[i]) * window.GetHeight(), r, g, b, 255);
+				const auto [r, g, b] = apply_wheel_coloring(i, [&](const int i)
+															{ return (float)(half_width - i) / half_width; });
+				drawPillAt(i, half_width - i, r, g, b, 255);
 			}
+			break;
 
-		else if (half == 2)
-			for (int i = half_width; i < tsize.width; ++i)
+		case 2:
+			for (int i = half_width + 1; i < pill_count(); ++i)
 			{
-				if (color_type == ColorType::WHEEL)
-					apply_wheel_coloring(i, [half_width](const int i)
-										 { return (float)i / half_width; });
-				move_to_column(i);
-				print_bar(multiplier * spectrum[i - half_width] * tsize.height);
+				const auto [r, g, b] = apply_wheel_coloring(i, [&](const int i)
+															{ return (float)i / half_width; });
+				drawPillAt(i, i - half_width, r, g, b, 255);
 			}
+			break;
+
+		default:
+			throw std::logic_error("Visualizer::print_half: half can only be 1 or 2");
+		}
+	}
+
+	void drawPillAt(const int pill_index, const int spectrum_index, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a)
+	{
+		renderer.drawPillFromBottomRGBA(
+			leftmostPillX() + (pill_index * (pill.width + pill.padding)), pillY(), pill.width,
+			multiplier * abs(spectrum[spectrum_index]) * window.GetHeight(), r, g, b, a);
 	}
 
 	std::tuple<Uint8, Uint8, Uint8> apply_wheel_coloring(const int i, const std::function<float(int)> &ratio_calc)

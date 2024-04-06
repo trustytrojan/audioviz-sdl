@@ -1,12 +1,12 @@
 #include <iostream>
+#include <csignal>
+#include "Args.hpp"
 
-#include "Visualizer.hpp"
-
-int main()
+int main(const int argc, const char *const *const argv)
 {
-	// Uncomment this to enforce Wayland instead of X11
+	std::signal(SIGINT, exit);
 	setenv("SDL_VIDEODRIVER", "wayland", 1);
-
 	SDL2pp::SDL sdl(SDL_INIT_VIDEO);
-	Visualizer().start();
+	Args(argc, argv).to_visualizer()
+		->start();
 }
