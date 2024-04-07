@@ -9,7 +9,7 @@ FrequencySpectrum &FrequencySpectrum::set_fft_size(const int fft_size)
 	return *this;
 }
 
-FrequencySpectrum &FrequencySpectrum::set_interp_type(const InterpType interp)
+FrequencySpectrum &FrequencySpectrum::set_interp_type(const InterpolationType interp)
 {
 	this->interp = interp;
 	return *this;

@@ -14,7 +14,7 @@ public:
 		NTH_ROOT
 	};
 
-	enum class InterpType
+	enum class InterpolationType
 	{
 		NONE,
 		LINEAR = tk::spline::linear,
@@ -50,7 +50,7 @@ private:
 
 	// interpolation
 	tk::spline spline;
-	InterpType interp = InterpType::CSPLINE;
+	InterpolationType interp = InterpolationType::CSPLINE;
 
 	// output spectrum scale
 	Scale scale = Scale::LOG;
@@ -67,7 +67,7 @@ private:
 		double linear, log, sqrt, cbrt, nthroot;
 		void set(const FrequencySpectrum &fs)
 		{
-			const auto max = fs.fftw.get_output_size();
+			const auto max = fs.fftw.output_size();
 			linear = max;
 			log = ::log(max);
 			sqrt = ::sqrt(max);
@@ -81,7 +81,7 @@ public:
 	 * Initialize frequency spectrum renderer.
 	 * @param fft_size sample chunk size fed into the `transform` method
 	 */
-	FrequencySpectrum(const int fft_size);
+	FrequencySpectrum(int fft_size);
 
 	/**
 	 * Set the FFT size used in the `kissfft` library.
@@ -89,35 +89,35 @@ public:
 	 * @returns reference to self
 	 * @throws `std::invalid_argument` if `fft_size` is not even
 	 */
-	FrequencySpectrum &set_fft_size(const int fft_size);
+	FrequencySpectrum &set_fft_size(int fft_size);
 
 	/**
 	 * Set interpolation type.
 	 * @param interp new interpolation type to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_interp_type(const InterpType interp);
+	FrequencySpectrum &set_interp_type(InterpolationType interp);
 
 	/**
 	 * Set window function.
 	 * @param interp new window function to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_window_func(const WindowFunction wf);
+	FrequencySpectrum &set_window_func(WindowFunction wf);
 
 	/**
 	 * Set frequency bin accumulation method.
 	 * @param interp new accumulation method to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_accum_method(const AccumulationMethod am);
+	FrequencySpectrum &set_accum_method(AccumulationMethod am);
 
 	/**
 	 * Set the spectrum's frequency scale.
 	 * @param scale new scale to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_scale(const Scale scale);
+	FrequencySpectrum &set_scale(Scale scale);
 
 	/**
 	 * Set the nth-root to use when using the `NTH_ROOT` scale.
@@ -125,17 +125,35 @@ public:
 	 * @returns reference to self
 	 * @throws `std::invalid_argument` if `nth_root` is zero
 	 */
-	FrequencySpectrum &set_nth_root(const int nth_root);
+	FrequencySpectrum &set_nth_root(int nth_root);
 
-	float *input_array() { return fftw.get_input(); }
+	/**
+	 * Copies the `wavedata` to the FFTW input buffer for rendering.
+	 * @param wavedata input wave sample data, expected to be of size `fft_size`
+	 */
+	void copy_to_input(const float *wavedata)
+	{
+		memcpy(fftw.input(), wavedata, fft_size * sizeof(float));
+	}
 
-	// it is assumed that `input_array()` holds your input wave data!
-	// you must write your input data to `input_array()` before calling `render`!!!!!!!!
+	/**
+	 * This method is meant for audio data.
+	 * Copies a specific channel of the audio buffer to the FFTW input buffer, which is of size `fft_size`.
+	 * If `num_channels` is greater than 1, then `audio` is expected to be of size `num_channels * fft_size`.
+	 * @throws `std::invalid_argument` if `channel` is not in the range `[0, num_channels)`
+	 * @throws `std::invalid_argument` if `num_channels <= 0`
+	 */
+	void copy_channel_to_input(const float *audio, int num_channels, int channel, bool interleaved);
+
+	/**
+	 * Performs the FFT on the wave data copied via `copy_channel_to_input`.
+	 * @param spectrum 
+	 */
 	void render(std::vector<float> &spectrum);
 
 private:
-	void apply_window_func(float *const timedata);
-	int calc_index(const int i, const int max_index);
-	float calc_index_ratio(const float i);
+	void apply_window_func(float *timedata);
+	int calc_index(int i, int max_index);
+	float calc_index_ratio(float i);
 	void interpolate(std::vector<float> &spectrum);
 };

@@ -9,17 +9,18 @@ class MyRenderer : public SDL2pp::Renderer
 	SDL_Renderer *const _r;
 
 public:
-	MyRenderer(SDL2pp::Window &window, const Uint32 flags);
+	MyRenderer(SDL2pp::Window &window, Uint32 flags);
+
+	void drawBarCentered(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+	void drawBarFromBottom(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	// Draws a "pill" shape centered about (x, y), and with width `w` and height `h`.
 	// `color` should be a hexadecimal integer literal in the form: `0xRRGGBBAA`.
-	void drawPillCentered(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint32 color);
+	void drawPillCentered(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	// Draws a "pill" shape with the bottom at (x, y), and with width `w` and height `h`.
 	// `color` should be a hexadecimal integer literal in the form: `0xRRGGBBAA`.
-	void drawPillFromBottom(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint32 color);
+	void drawPillFromBottom(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
-	void drawPillFromBottomRGBA(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a);
-
-	void drawArc(const Sint16 x, const Sint16 y, const Sint16 rad, const Sint16 start, const Sint16 end, const Uint32 color);
+	void drawArc(Sint16 x, Sint16 y, Sint16 rad, Sint16 start, Sint16 end, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 };

@@ -232,13 +232,13 @@ auto Args::to_visualizer() -> std::unique_ptr<Visualizer>
 	{ // interpolation type
 		const auto &interp_str = get("-i");
 		if (interp_str == "none")
-			viz->set_interp_type(InterpType::NONE);
+			viz->set_interp_type(InterpolationType::NONE);
 		else if (interp_str == "linear")
-			viz->set_interp_type(InterpType::LINEAR);
+			viz->set_interp_type(InterpolationType::LINEAR);
 		else if (interp_str == "cspline")
-			viz->set_interp_type(InterpType::CSPLINE);
+			viz->set_interp_type(InterpolationType::CSPLINE);
 		else if (interp_str == "cspline_hermite")
-			viz->set_interp_type(InterpType::CSPLINE_HERMITE);
+			viz->set_interp_type(InterpolationType::CSPLINE_HERMITE);
 		else
 			throw std::invalid_argument("unknown interpolation type: " + interp_str);
 	}

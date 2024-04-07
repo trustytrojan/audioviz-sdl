@@ -214,7 +214,7 @@ void Visualizer::print_full()
 	{
 		const auto [r, g, b] = apply_wheel_coloring(i, [this](const int i)
 													{ return (float)i / spectrum.size(); });
-		renderer.drawPillFromBottomRGBA(
+		renderer.drawPillFromBottom(
 			leftmostPillX() + (i * (pill.width + pill.padding)), pillY(), pill.width,
 			multiplier * abs(spectrum[i]) * window.GetHeight(), r, g, b, 255);
 	}
@@ -228,16 +228,16 @@ void Visualizer::print_half(int half)
 	switch (half)
 	{
 	case 1:
-		for (int i = half_width; i > 0; --i)
+		for (int i = half_width - 1; i >= 0; --i)
 		{
 			const auto [r, g, b] = apply_wheel_coloring(i, [=](const int i)
 														{ return (float)(half_width - i) / half_width; });
-			drawPillAt(i, half_width - i, r, g, b, 255);
+			drawPillAt(i, (half_width - 1) - i, r, g, b, 255);
 		}
 		break;
 
 	case 2:
-		for (int i = half_width + 1; i < pill_count; ++i)
+		for (int i = half_width; i < pill_count; ++i)
 		{
 			const auto [r, g, b] = apply_wheel_coloring(i, [=](const int i)
 														{ return (float)i / half_width; });
@@ -258,7 +258,7 @@ void Visualizer::drawPillAt(const int pill_index, const int spectrum_index, cons
 	const auto h = std::min(
 		static_cast<float>(window.GetHeight() - margin),
 		multiplier * std::max(0.f, spectrum[spectrum_index]) * window.GetHeight());
-	renderer.drawPillFromBottomRGBA(x, pillY(), pill.width, h, r, g, b, a);
+	renderer.drawPillFromBottom(x, pillY(), pill.width, h, r, g, b, a);
 }
 
 std::tuple<Uint8, Uint8, Uint8> Visualizer::apply_wheel_coloring(const int i, const std::function<float(int)> &ratio_calc)

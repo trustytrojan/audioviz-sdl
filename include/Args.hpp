@@ -9,7 +9,7 @@ class Args : public ArgumentParser
 {
 	using ColorType = Visualizer::ColorType;
 	using Scale = FrequencySpectrum::Scale;
-	using InterpType = FrequencySpectrum::InterpType;
+	using InterpType = FrequencySpectrum::InterpolationType;
 	using AccumulationMethod = FrequencySpectrum::AccumulationMethod;
 	using WindowFunction = FrequencySpectrum::WindowFunction;
 

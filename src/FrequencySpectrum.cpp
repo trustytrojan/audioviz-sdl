@@ -1,5 +1,6 @@
 #include "FrequencySpectrum.hpp"
 #include <stdexcept>
+#include <cstring>
 
 FrequencySpectrum::FrequencySpectrum(const int fft_size)
 	: fft_size(fft_size)
@@ -7,17 +8,37 @@ FrequencySpectrum::FrequencySpectrum(const int fft_size)
 	scale_max.set(*this);
 }
 
+void FrequencySpectrum::copy_channel_to_input(const float *const audio, const int num_channels, const int channel, const bool interleaved)
+{
+	if (num_channels <= 0)
+		throw std::invalid_argument("num_channels <= 0");
+	if (channel < 0)
+		throw std::invalid_argument("channel <= 0");
+	if (channel >= num_channels)
+		throw std::invalid_argument("channel > num_channels");
+
+	if (!interleaved)
+	{
+		copy_to_input(audio + (channel * fft_size));
+		return;
+	}
+
+	const auto input = fftw.input();
+	for (int i = 0; i < fft_size; ++i)
+		input[i] = audio[i * num_channels + channel];
+}
+
 void FrequencySpectrum::render(std::vector<float> &spectrum)
 {
-	apply_window_func(input_array());
+	apply_window_func(fftw.input());
 	fftw.execute();
-	const auto output = fftw.get_output();
+	const auto output = fftw.output();
 
 	// zero out array since we are accumulating
 	std::ranges::fill(spectrum, 0);
 
 	// map frequency bins of freqdata to spectrum
-	for (int i = 0; i < fftw.get_output_size(); ++i)
+	for (int i = 0; i < fftw.output_size(); ++i)
 	{
 		const auto [re, im] = output[i];
 		const float amplitude = sqrt((re * re) + (im * im));
@@ -45,7 +66,7 @@ void FrequencySpectrum::render(std::vector<float> &spectrum)
 		a *= fftsize_inv;
 
 	// apply interpolation if necessary
-	if (interp != InterpType::NONE && scale != Scale::LINEAR)
+	if (interp != InterpolationType::NONE && scale != Scale::LINEAR)
 		interpolate(spectrum);
 }
 
