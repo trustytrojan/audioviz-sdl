@@ -5,19 +5,12 @@ MyRenderer::MyRenderer(SDL2pp::Window &window, const Uint32 flags)
 
 void MyRenderer::drawBarCentered(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a)
 {
-	// (x, y) is the CENTER of the bar.
 	boxRGBA(_r, x - (w / 2), y - (h / 2), x + (w / 2), y + (h / 2), r, g, b, a);
 }
 
 void MyRenderer::drawBarFromBottom(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a)
 {
-	// (x, y) is the BOTTOM-MIDDLE of the bar.
-	// aka the CENTER of the BOTTOM CIRCLE.
-
-	// Draw the box with the BOTTOM at (x, y):
-	// Top-left corner:     x1 = x - (w / 2), y1 = y - h - (w / 2)
-	// Bottom-right corner: x2 = x + (w / 2), y2 = y + (w / 2)
-	boxRGBA(_r, x - (w / 2), y - h, x + (w / 2), y, r, g, b, a);
+	boxRGBA(_r, x, y - h, x + w, y, r, g, b, a);
 }
 
 void MyRenderer::drawPillCentered(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a)

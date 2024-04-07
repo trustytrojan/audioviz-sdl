@@ -22,19 +22,7 @@ Visualizer &Visualizer::set_sample_size(const int sample_size)
 
 Visualizer &Visualizer::set_multiplier(const float multiplier)
 {
-	this->multiplier = multiplier;
-	return *this;
-}
-
-// Visualizer &Visualizer::set_prerender(bool prerender)
-// {
-// 	this->prerender = prerender;
-// 	return *this;
-// }
-
-Visualizer &Visualizer::set_stereo(bool enabled)
-{
-	stereo = enabled;
+	sr.set_multiplier(multiplier);
 	return *this;
 }
 
@@ -65,23 +53,5 @@ Visualizer &Visualizer::set_accum_method(const AccumulationMethod method)
 Visualizer &Visualizer::set_window_function(const WindowFunction wf)
 {
 	fs.set_window_func(wf);
-	return *this;
-}
-
-Visualizer &Visualizer::set_pill_width(const int width)
-{
-	pill.width = width;
-	return *this;
-}
-
-Visualizer &Visualizer::set_pill_padding(const int padding)
-{
-	pill.padding = padding;
-	return *this;
-}
-
-Visualizer &Visualizer::set_margin(const int margin)
-{
-	this->margin = margin;
 	return *this;
 }

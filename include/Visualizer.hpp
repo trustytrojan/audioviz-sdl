@@ -2,9 +2,9 @@
 
 #include <sndfile.hh>
 #include <chrono>
-#include "MyRenderer.hpp"
 #include "FrequencySpectrum.hpp"
 #include "PortAudio.hpp"
+#include "SpectrumRenderer.hpp"
 
 class Visualizer
 {
@@ -24,32 +24,20 @@ public:
 private:
 	// general parameters
 	int sample_size = 3000;
-	float multiplier = 5;
 	const std::string &audio_file;
-
-	struct
-	{
-		int width = 10, padding = 5;
-	} pill;
-
-	int margin = 15;
-	int pill_count = (window.GetWidth() - (2 * margin)) / (pill.width + pill.padding);
 
 	// SDL2pp window and renderer
 	SDL2pp::Window window;
-	MyRenderer renderer = MyRenderer(window, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	SpectrumRenderer sr = SpectrumRenderer(sample_size, window, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-	// initialize spectrum renderer
+	// spectrum renderer
 	FrequencySpectrum fs = sample_size;
 
 	// open audio file
 	SndfileHandle sf = audio_file;
-	bool stereo = (sf.channels() == 2);
 
 	// intermediate arrays
-	std::vector<float>
-		audio_buffer = std::vector<float>(sample_size * sf.channels()),
-		spectrum;
+	std::vector<float> audio_buffer = std::vector<float>(sample_size * sf.channels());
 
 	// synchronization
 	int refresh_rate = [this]
@@ -58,21 +46,6 @@ private:
 		window.GetDisplayMode(mode);
 		return mode.refresh_rate;
 	}();
-
-	// color stuff
-	ColorType color_type = ColorType::WHEEL;
-	std::tuple<int, int, int> solid_rgb{255, 0, 255};
-
-	// color wheel rotation
-	struct
-	{
-		float time = 0, rate = 0;
-		std::tuple<float, float, float> hsv{0.9, 0.7, 1};
-	} wheel;
-
-	// for pre-rendering
-	// bool prerender = false;
-	// std::queue<std::vector<float>> spectrum_queue;
 
 	const int total_frames = sf.frames() / audio_frames_per_video_frame();
 
@@ -101,10 +74,6 @@ public:
 	 * @return reference to self
 	 */
 	Visualizer &set_multiplier(const float multiplier);
-
-	// Visualizer &set_prerender(bool prerender);
-
-	Visualizer &set_stereo(bool enabled);
 
 	/**
 	 * Set interpolation type.
@@ -144,26 +113,9 @@ public:
 	 */
 	Visualizer &set_window_function(const WindowFunction wf);
 
-	Visualizer &set_pill_width(const int width);
-
-	Visualizer &set_pill_padding(const int padding);
-
-	Visualizer &set_margin(const int margin);
-
 private:
-	int leftmostPillX() const { return margin + (pill.width / 2); }
-	int pillY() const { return window.GetHeight() - margin - (pill.width / 2); }
 	int audio_frames_per_video_frame() const { return sf.samplerate() / refresh_rate; }
-	void resize_spectrum_array();
-
-	void start_sync();
-	void do_actual_rendering();
 	void print_render_stats(const int frame, const std::chrono::nanoseconds draw_time, const double fps);
 	void try_write_audio_buffer(PortAudio::Stream &pa_stream);
 	void handleEvents();
-	void copy_channel_to_input(const int channel_num);
-	void print_full();
-	void print_half(int half);
-	void drawPillAt(const int pill_index, const int spectrum_index, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a);
-	std::tuple<Uint8, Uint8, Uint8> apply_wheel_coloring(const int i, const std::function<float(int)> &ratio_calc);
 };

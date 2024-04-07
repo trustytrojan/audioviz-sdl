@@ -2,23 +2,28 @@
 
 #include "MyRenderer.hpp"
 #include "FrequencySpectrum.hpp"
+#include "ColorUtils.hpp"
 
-class SpectrumRenderer : protected MyRenderer
+class SpectrumRenderer : public MyRenderer
 {
 public:
 	using FS = FrequencySpectrum;
 
 	enum class ColorMode
 	{
-		NONE,
 		WHEEL,
 		SOLID
 	};
 
+	enum class BarType
+	{
+		RECTANGLE,
+		PILL
+	};
+
 protected:
-	int sample_size = 3000;
 	float multiplier = 5;
-	FS fs = sample_size;
+	FS fs;
 
 	/**
 	 * Output vector for storing spectrum data from calls to `FrequencySpectrum::render`.
@@ -28,19 +33,64 @@ protected:
 	 */
 	std::vector<float> spectrum;
 
-public:
-	void render_spectrum(const float *const audio, const int num_channels, const int channel, const bool interleaved)
+	// bar stuff
+	struct
 	{
-		fs.copy_channel_to_input(audio, num_channels, channel, interleaved);
-		fs.render(spectrum);
-		do_actual_rendering();
-	}
+		int width = 10, spacing = 5;
+		BarType type = BarType::PILL;
+	} bar;
 
-	void set_sample_size(const int sample_size)
+public:
+	SpectrumRenderer(const int sample_size, SDL2pp::Window &window, const Uint32 flags);
+	void set_sample_size(const int sample_size);
+	void set_multiplier(const float multiplier);
+
+	// color stuff
+	class
 	{
-		this->sample_size = sample_size;
-		fs.set_fft_size(sample_size);
-	}
+		using RGBTuple = std::tuple<Uint8, Uint8, Uint8>;
+		friend class SpectrumRenderer;
+		ColorMode mode = ColorMode::WHEEL;
+		RGBTuple solid_rgb{255, 255, 255};
+
+	public:
+		void set_mode(ColorMode mode) { this->mode = mode; }
+		void set_solid_rgb(RGBTuple rgb) { solid_rgb = rgb; }
+
+		/**
+		 * @param index_ratio the ratio of your loop index (aka `i`) to the total number of bars to print (aka `spectrum.size()`)
+		 */
+		RGBTuple get(const float index_ratio) const
+		{
+			switch (mode)
+			{
+			case ColorMode::WHEEL:
+			{
+				const auto [h, s, v] = wheel.hsv;
+				return ColorUtils::hsvToRgb(index_ratio + h + wheel.time, s, v);
+			}
+
+			case ColorMode::SOLID:
+				return solid_rgb;
+			
+			default:
+				throw std::logic_error("SpectrumRenderer::color::get: default case hit");
+			}
+		}
+
+		class
+		{
+			friend class SpectrumRenderer;
+			float time = 0, rate = 0;
+			// hue offset, saturation, value
+			std::tuple<float, float, float> hsv{0.9, 0.7, 1};
+
+		public:
+			void set_rate(float rate) { this->rate = rate; }
+			void set_hsv(std::tuple<float, float, float> hsv) { this->hsv = hsv; }
+			void increment() { time += rate; }
+		} wheel;
+	} color;
 
 	void set_interp_type(const FS::InterpolationType interp_type)
 	{
@@ -67,6 +117,13 @@ public:
 		fs.set_window_func(wf);
 	}
 
-protected:
-	virtual void do_actual_rendering() = 0;
+	void copy_channel_to_input(const float *audio, int num_channels, int channel, bool interleaved)
+	{
+		fs.copy_channel_to_input(audio, num_channels, channel, interleaved);
+	}
+
+	/**
+	 * Assumes you have already called `copy_channel_to_input` beforehand.
+	 */
+	void render_spectrum(const SDL2pp::Rect &rect, const bool backwards);
 };

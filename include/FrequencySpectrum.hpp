@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <vector>
 #include "spline.hpp"
 #include "fftwf_dft_r2c_1d.hpp"

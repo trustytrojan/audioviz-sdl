@@ -11,15 +11,18 @@ class MyRenderer : public SDL2pp::Renderer
 public:
 	MyRenderer(SDL2pp::Window &window, Uint32 flags);
 
+	// (x, y) is the CENTER of the bar.
 	void drawBarCentered(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+
+	// (x, y) is the BOTTOM-LEFT of the bar.
 	void drawBarFromBottom(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	// Draws a "pill" shape centered about (x, y), and with width `w` and height `h`.
-	// `color` should be a hexadecimal integer literal in the form: `0xRRGGBBAA`.
+	// At `h = 0`, the drawn shape is essentially a circle.
 	void drawPillCentered(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
-	// Draws a "pill" shape with the bottom at (x, y), and with width `w` and height `h`.
-	// `color` should be a hexadecimal integer literal in the form: `0xRRGGBBAA`.
+	// Draws a "pill" shape with its bottom circle centered at (x, y), and with width `w` and height `h`.
+	// At `h = 0`, the drawn shape is essentially a circle.
 	void drawPillFromBottom(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 	void drawArc(Sint16 x, Sint16 y, Sint16 rad, Sint16 start, Sint16 end, Uint8 r, Uint8 g, Uint8 b, Uint8 a);

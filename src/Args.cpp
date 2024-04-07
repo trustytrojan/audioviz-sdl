@@ -6,9 +6,6 @@ Args::Args(const int argc, const char *const *const argv)
 	add_argument("audio_file")
 		.help("audio file to visualize and play");
 
-	// add_argument("--prerender")
-	// 	.help("prerender all spectrum frames before playback to avoid output underflow")
-	// 	.flag();
 	add_argument("--encode")
 		.help("encode to a video!");
 	add_argument("--force-mono")
@@ -74,19 +71,6 @@ Args::Args(const int argc, const char *const *const argv)
 	add_argument("--rgb")
 		.help("requires '--color solid'\nrenders the spectrum with a solid color\nmust provide space-separated rgb integers")
 		.nargs(3)
-		.validate();
-
-	add_argument("--pw", "--pill-width")
-		.help("pill width in pixels")
-		.scan<'i', int>()
-		.validate();
-	add_argument("--pp", "--pill-padding")
-		.help("padding between pills in pixels")
-		.scan<'i', int>()
-		.validate();
-	add_argument("--margin")
-		.help("margin in pixels between window edge and spectrum pills")
-		.scan<'i', int>()
 		.validate();
 
 	add_argument("--width")
@@ -165,52 +149,12 @@ auto Args::to_visualizer() -> std::unique_ptr<Visualizer>
 	{
 	}
 
-	// viz->set_prerender(get<bool>("--prerender"));
-	if (get<bool>("--force-mono"))
-		viz->set_stereo(false);
-
-	try
-	{
-		viz->set_pill_width(get<int>("--pill-width"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		viz->set_pill_padding(get<int>("--pill-padding"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		viz->set_margin(get<int>("--margin"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
 	{ // accumulation method
 		const auto &acc_method_str = get("-a");
 		if (acc_method_str == "sum")
-			viz->set_accum_method(AccumulationMethod::SUM);
+			viz->set_accum_method(FS::AccumulationMethod::SUM);
 		else if (acc_method_str == "max")
-			viz->set_accum_method(AccumulationMethod::MAX);
+			viz->set_accum_method(FS::AccumulationMethod::MAX);
 		else
 			throw std::invalid_argument("unknown accumulation method: " + acc_method_str);
 	}
@@ -218,13 +162,13 @@ auto Args::to_visualizer() -> std::unique_ptr<Visualizer>
 	{ // window function
 		const auto &wfunc_str = get("-w");
 		if (wfunc_str == "hanning")
-			viz->set_window_function(WindowFunction::HANNING);
+			viz->set_window_function(FS::WindowFunction::HANNING);
 		else if (wfunc_str == "hamming")
-			viz->set_window_function(WindowFunction::HAMMING);
+			viz->set_window_function(FS::WindowFunction::HAMMING);
 		else if (wfunc_str == "blackman")
-			viz->set_window_function(WindowFunction::BLACKMAN);
+			viz->set_window_function(FS::WindowFunction::BLACKMAN);
 		else if (wfunc_str == "none")
-			viz->set_window_function(WindowFunction::NONE);
+			viz->set_window_function(FS::WindowFunction::NONE);
 		else
 			throw std::invalid_argument("unknown window function: " + wfunc_str);
 	}
@@ -232,13 +176,13 @@ auto Args::to_visualizer() -> std::unique_ptr<Visualizer>
 	{ // interpolation type
 		const auto &interp_str = get("-i");
 		if (interp_str == "none")
-			viz->set_interp_type(InterpolationType::NONE);
+			viz->set_interp_type(FS::InterpolationType::NONE);
 		else if (interp_str == "linear")
-			viz->set_interp_type(InterpolationType::LINEAR);
+			viz->set_interp_type(FS::InterpolationType::LINEAR);
 		else if (interp_str == "cspline")
-			viz->set_interp_type(InterpolationType::CSPLINE);
+			viz->set_interp_type(FS::InterpolationType::CSPLINE);
 		else if (interp_str == "cspline_hermite")
-			viz->set_interp_type(InterpolationType::CSPLINE_HERMITE);
+			viz->set_interp_type(FS::InterpolationType::CSPLINE_HERMITE);
 		else
 			throw std::invalid_argument("unknown interpolation type: " + interp_str);
 	}
@@ -269,12 +213,12 @@ auto Args::to_visualizer() -> std::unique_ptr<Visualizer>
 	{ // frequency scale (x-axis)
 		const auto &scale_str = get("-s");
 		if (scale_str == "linear")
-			viz->set_scale(Scale::LINEAR);
+			viz->set_scale(FS::Scale::LINEAR);
 		else if (scale_str == "log")
-			viz->set_scale(Scale::LOG);
+			viz->set_scale(FS::Scale::LOG);
 		else if (scale_str == "nth-root")
 		{
-			viz->set_scale(Scale::NTH_ROOT);
+			viz->set_scale(FS::Scale::NTH_ROOT);
 			const auto nth_root = get<float>("--nth-root");
 			if (!nth_root)
 				throw std::invalid_argument("nth_root cannot be zero!");

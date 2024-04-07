@@ -8,12 +8,9 @@ using argparse::ArgumentParser;
 class Args : public ArgumentParser
 {
 	using ColorType = Visualizer::ColorType;
-	using Scale = FrequencySpectrum::Scale;
-	using InterpType = FrequencySpectrum::InterpolationType;
-	using AccumulationMethod = FrequencySpectrum::AccumulationMethod;
-	using WindowFunction = FrequencySpectrum::WindowFunction;
+	using FS = FrequencySpectrum;
 
 public:
 	Args(const int argc, const char *const *const argv);
-	auto to_visualizer() -> std::unique_ptr<Visualizer>;
+	std::unique_ptr<Visualizer> to_visualizer();
 };
