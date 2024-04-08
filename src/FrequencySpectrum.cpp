@@ -130,13 +130,12 @@ void FrequencySpectrum::interpolate(std::vector<float> &spectrum)
 	}
 
 	// tk::spline::set_points throws if there are less than 3 points
-	// plus, if there are less than 3 points, we wouldn't be smoothing anything
 	if (indices.size() < 3)
 		return;
 
 	spline.set_points(indices, nonzero_values, (tk::spline::spline_type)interp);
 
 	// only copy spline values to fill in the gaps
-	for (int i = 0; i < (int)spectrum.size(); ++i)
+	for (size_t i = 0; i < spectrum.size(); ++i)
 		spectrum[i] = spectrum[i] ? spectrum[i] : spline(i);
 }

@@ -89,35 +89,35 @@ public:
 	 * @returns reference to self
 	 * @throws `std::invalid_argument` if `fft_size` is not even
 	 */
-	FrequencySpectrum &set_fft_size(int fft_size);
+	void set_fft_size(int fft_size);
 
 	/**
 	 * Set interpolation type.
 	 * @param interp new interpolation type to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_interp_type(InterpolationType interp);
+	void set_interp_type(InterpolationType interp);
 
 	/**
 	 * Set window function.
 	 * @param interp new window function to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_window_func(WindowFunction wf);
+	void set_window_func(WindowFunction wf);
 
 	/**
 	 * Set frequency bin accumulation method.
 	 * @param interp new accumulation method to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_accum_method(AccumulationMethod am);
+	void set_accum_method(AccumulationMethod am);
 
 	/**
 	 * Set the spectrum's frequency scale.
 	 * @param scale new scale to use
 	 * @returns reference to self
 	 */
-	FrequencySpectrum &set_scale(Scale scale);
+	void set_scale(Scale scale);
 
 	/**
 	 * Set the nth-root to use when using the `NTH_ROOT` scale.
@@ -125,7 +125,7 @@ public:
 	 * @returns reference to self
 	 * @throws `std::invalid_argument` if `nth_root` is zero
 	 */
-	FrequencySpectrum &set_nth_root(int nth_root);
+	void set_nth_root(int nth_root);
 
 	/**
 	 * Copies the `wavedata` to the FFTW input buffer for rendering.

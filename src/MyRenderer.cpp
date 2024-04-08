@@ -10,7 +10,11 @@ void MyRenderer::drawBarCentered(const Sint16 x, const Sint16 y, const Sint16 w,
 
 void MyRenderer::drawBarFromBottom(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a)
 {
-	boxRGBA(_r, x, y - h, x + w, y, r, g, b, a);
+	if (w < 0)
+		throw std::invalid_argument("w < 0");
+	if (h < 0)
+		throw std::invalid_argument("h < 0");
+	boxRGBA(_r, x, y - h, x + w - 1, y, r, g, b, a);
 }
 
 void MyRenderer::drawPillCentered(const Sint16 x, const Sint16 y, const Sint16 w, const Sint16 h, const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a)

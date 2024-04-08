@@ -1,5 +1,10 @@
 #include "SpectrumRenderer.hpp"
 
+void SpectrumRenderer::copy_channel_to_input(const float *audio, int num_channels, int channel, bool interleaved)
+{
+	fs.copy_channel_to_input(audio, num_channels, channel, interleaved);
+}
+
 void SpectrumRenderer::render_spectrum(const SDL2pp::Rect &rect, const bool backwards)
 {
 	// resize spectrum first! this is the old formula, except now it's relative to the passed in rect.

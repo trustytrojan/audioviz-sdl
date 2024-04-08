@@ -3,53 +3,11 @@
 Main::Main(const int argc, const char *const *const argv)
 	: Args(argc, argv), Visualizer(get("audio_file"), get<int>("--width"), get<int>("--height"))
 {
-	try
-	{
-		set_sample_size(get<int>("-n"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		set_multiplier(get<float>("-m"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		set_bar_width(get<int>("-bw"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		set_bar_spacing(get<int>("-bs"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
+	// all of these have default values, no need to try-catch
+	set_sample_size(get<int>("-n"));
+	set_multiplier(get<float>("-m"));
+	set_bar_width(get<int>("-bw"));
+	set_bar_spacing(get<int>("-bs"));
 
 	{ // bar type
 		const auto &bt_str = get("-bt");
@@ -99,28 +57,24 @@ Main::Main(const int argc, const char *const *const argv)
 			throw std::invalid_argument("unknown interpolation type: " + interp_str);
 	}
 
-	// { // spectrum coloring type
-	// 	const auto &color_str = get("--color");
-	// 	if (color_str == "wheel")
-	// 	{
-	// 		set_color_type(ColorType::WHEEL);
-	// 		const auto &hsv_strs = get<std::vector<std::string>>("--hsv");
-	// 		if (hsv_strs.size())
-	// 			set_wheel_hsv({std::stof(hsv_strs[0]), std::stof(hsv_strs[1]), std::stof(hsv_strs[2])});
-	// 		set_wheel_rate(get<float>("--wheel-rate"));
-	// 	}
-	// 	else if (color_str == "solid")
-	// 	{
-	// 		set_color_type(ColorType::SOLID);
-	// 		const auto &rgb_strs = get<std::vector<std::string>>("--rgb");
-	// 		if (rgb_strs.size())
-	// 			set_solid_color({std::stoi(rgb_strs[0]), std::stoi(rgb_strs[1]), std::stoi(rgb_strs[2])});
-	// 	}
-	// 	else if (color_str == "none")
-	// 		set_color_type(ColorType::NONE);
-	// 	else
-	// 		throw std::invalid_argument("unknown coloring type: " + color_str);
-	// }
+	{ // spectrum coloring type
+		const auto &color_str = get("--color");
+		if (color_str == "wheel")
+		{
+			set_color_mode(SR::ColorMode::WHEEL);
+			const auto &hsv = get<std::vector<float>>("--hsv");
+			set_color_wheel_hsv({hsv[0], hsv[1], hsv[2]});
+			set_color_wheel_rate(get<float>("--wheel-rate"));
+		}
+		else if (color_str == "solid")
+		{
+			set_color_mode(SR::ColorMode::SOLID);
+			const auto &rgb = get<std::vector<Uint8>>("--rgb");
+			set_color_solid_rgb({rgb[0], rgb[1], rgb[2]});
+		}
+		else
+			throw std::invalid_argument("unknown coloring type: " + color_str);
+	}
 
 	{ // frequency scale (x-axis)
 		const auto &scale_str = get("-s");

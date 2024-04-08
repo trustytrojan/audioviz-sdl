@@ -2,24 +2,16 @@
 
 #include <sndfile.hh>
 #include <chrono>
-#include "FrequencySpectrum.hpp"
 #include "PortAudio.hpp"
 #include "SpectrumRenderer.hpp"
 
 class Visualizer
 {
 public:
-	enum class ColorType
-	{
-		NONE,
-		WHEEL,
-		SOLID
-	};
-
 	using FS = FrequencySpectrum;
 	using SR = SpectrumRenderer;
 
-private:
+protected:
 	// general parameters
 	int sample_size = 3000;
 	const std::string audio_file;
@@ -45,15 +37,19 @@ private:
 	// total spectrum/video frames to render from audio
 	const int total_frames = sf.frames() / audio_frames_per_video_frame();
 
+	int mono = -1;
+
 public:
 	// width and height matter if you are pre-rendering!
-	Visualizer(const std::string &audio_file, const int width = 800, const int height = 600);
+	Visualizer(const std::string &audio_file, int width = 800, int height = 600);
 
 	void start();
 	void encode_to_video_popen(const std::string &output_file);
+	void do_actual_rendering();
 
-	Visualizer &set_width(const int width);
-	Visualizer &set_height(const int height);
+	void set_width(int width);
+	void set_height(int height);
+	void set_mono(int mono);
 
 	/**
 	 * Set the sample chunk size to use in internal calculations.
@@ -62,28 +58,28 @@ public:
 	 * @param sample_size new sample size to use
 	 * @return reference to self
 	 */
-	Visualizer &set_sample_size(const int sample_size);
+	void set_sample_size(int sample_size);
 
 	/**
 	 * Set the multiplier to multiply the spectrum's height by.
 	 * @param multiplier new multiplier to use
 	 * @return reference to self
 	 */
-	Visualizer &set_multiplier(const float multiplier);
+	void set_multiplier(float multiplier);
 
 	/**
 	 * Set interpolation type.
 	 * @param interp new interpolation type to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_interp_type(const FS::InterpolationType interp_type);
+	void set_interp_type(FS::InterpolationType interp_type);
 
 	/**
 	 * Set the spectrum's frequency scale.
 	 * @param scale new scale to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_scale(const FS::Scale scale);
+	void set_scale(FS::Scale scale);
 
 	/**
 	 * Set the nth-root to use when using the `NTH_ROOT` scale.
@@ -91,7 +87,7 @@ public:
 	 * @returns reference to self
 	 * @throws `std::invalid_argument` if `nth_root` is zero
 	 */
-	Visualizer &set_nth_root(const int nth_root);
+	void set_nth_root(int nth_root);
 
 	/**
 	 * Set frequency bin accumulation method.
@@ -100,22 +96,27 @@ public:
 	 * @param interp new accumulation method to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_accum_method(const FS::AccumulationMethod method);
+	void set_accum_method(FS::AccumulationMethod method);
 
 	/**
 	 * Set window function.
 	 * @param interp new window function to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_window_function(const FS::WindowFunction wf);
+	void set_window_function(FS::WindowFunction wf);
 
-	Visualizer &set_bar_type(const SR::BarType type);
-	Visualizer &set_bar_width(const int width);
-	Visualizer &set_bar_spacing(const int spacing);
+	void set_bar_type(SR::BarType type);
+	void set_bar_width(int width);
+	void set_bar_spacing(int spacing);
+
+	void set_color_mode(SR::ColorMode mode);
+	void set_color_wheel_rate(float rate);
+	void set_color_solid_rgb(const SR::RGBTuple &rgb);
+	void set_color_wheel_hsv(const std::tuple<float, float, float> &hsv);
 
 private:
 	int audio_frames_per_video_frame() const { return sf.samplerate() / refresh_rate; }
-	void print_render_stats(const int frame, const std::chrono::_V2::system_clock::time_point &start);
+	void print_render_stats(int frame, const std::chrono::_V2::system_clock::time_point &start);
 	void try_write_audio_buffer(PortAudio::Stream &pa_stream);
-	void handleEvents();
+	void handle_events();
 };

@@ -9,24 +9,21 @@ struct PortAudio
 	class Error : public std::runtime_error
 	{
 		friend class PortAudio;
-		Error(const std::string &s) : std::runtime_error("portaudio: " + s) {}
+		Error(const PaError err) : std::runtime_error(std::string("portaudio: ") + Pa_GetErrorText(err)) {}
 	};
 
 	class Stream
 	{
 		friend class PortAudio;
-
 		PaStream *stream;
-		int sample_size;
 
 		Stream(int numInputChannels, int numOutputChannels, PaSampleFormat sampleFormat, double sampleRate, unsigned long framesPerBuffer, PaStreamCallback *streamCallback, void *userData)
 		{
 			PaError err;
 			if ((err = Pa_OpenDefaultStream(&stream, numInputChannels, numOutputChannels, sampleFormat, sampleRate, framesPerBuffer, streamCallback, userData)))
-				throw Error(Pa_GetErrorText(err));
+				throw Error(err);
 			if ((err = Pa_StartStream(stream)))
-				throw Error(Pa_GetErrorText(err));
-			sample_size = framesPerBuffer;
+				throw Error(err);
 		}
 
 	public:
@@ -48,23 +45,20 @@ struct PortAudio
 		{
 			PaError err;
 			if ((err = Pa_StopStream(stream)))
-				throw Error(Pa_GetErrorText(err));
+				throw Error(err);
 			if ((err = Pa_CloseStream(stream)))
-				throw Error(Pa_GetErrorText(err));
-
+				throw Error(err);
 			if ((err = Pa_OpenDefaultStream(&stream, numInputChannels, numOutputChannels, sampleFormat, sampleRate, framesPerBuffer, streamCallback, userData)))
-				throw Error(Pa_GetErrorText(err));
+				throw Error(err);
 			if ((err = Pa_StartStream(stream)))
-				throw Error(Pa_GetErrorText(err));
-
-			sample_size = framesPerBuffer;
+				throw Error(err);
 		}
 
 		void write(const float *const buffer, const size_t n_frames)
 		{
 			PaError err;
 			if ((err = Pa_WriteStream(stream, buffer, n_frames)))
-				throw Error(Pa_GetErrorText(err));
+				throw Error(err);
 		}
 	};
 
@@ -72,7 +66,7 @@ struct PortAudio
 	{
 		PaError err;
 		if ((err = Pa_Initialize()))
-			throw Error(Pa_GetErrorText(err));
+			throw Error(err);
 	}
 
 	~PortAudio()
