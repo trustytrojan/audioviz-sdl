@@ -5,3 +5,5 @@ obj
 .vscode/settings.json
 Music
 vgcore*
+*.mkv
+*.mp4
