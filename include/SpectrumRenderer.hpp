@@ -22,7 +22,7 @@ public:
 	};
 
 protected:
-	float multiplier = 5;
+	float multiplier = 4;
 	FS fs;
 
 	/**
@@ -33,17 +33,10 @@ protected:
 	 */
 	std::vector<float> spectrum;
 
-	// bar stuff
-	struct
-	{
-		int width = 10, spacing = 5;
-		BarType type = BarType::PILL;
-	} bar;
-
 public:
-	SpectrumRenderer(const int sample_size, SDL2pp::Window &window, const Uint32 flags);
-	void set_sample_size(const int sample_size);
-	void set_multiplier(const float multiplier);
+	SpectrumRenderer(const int sample_size, SDL2pp::Window &window, const Uint32 flags)
+		: MyRenderer(window, flags),
+		  fs(sample_size) {}
 
 	// color stuff
 	class
@@ -72,7 +65,7 @@ public:
 
 			case ColorMode::SOLID:
 				return solid_rgb;
-			
+
 			default:
 				throw std::logic_error("SpectrumRenderer::color::get: default case hit");
 			}
@@ -91,6 +84,29 @@ public:
 			void increment() { time += rate; }
 		} wheel;
 	} color;
+
+	// bar stuff
+	class
+	{
+		friend class SpectrumRenderer;
+		int width = 10, spacing = 5;
+		BarType type = BarType::PILL;
+
+	public:
+		void set_width(int width) { this->width = width; }
+		void set_spacing(int spacing) { this->spacing = spacing; }
+		void set_type(BarType type) { this->type = type; }
+	} bar;
+
+	void set_sample_size(const int sample_size)
+	{
+		fs.set_fft_size(sample_size);
+	}
+
+	void set_multiplier(const float multiplier)
+	{
+		this->multiplier = multiplier;
+	}
 
 	void set_interp_type(const FS::InterpolationType interp_type)
 	{

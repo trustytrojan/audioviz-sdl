@@ -26,13 +26,13 @@ Visualizer &Visualizer::set_multiplier(const float multiplier)
 	return *this;
 }
 
-Visualizer &Visualizer::set_interp_type(const InterpType interp_type)
+Visualizer &Visualizer::set_interp_type(const FS::InterpolationType interp_type)
 {
 	sr.set_interp_type(interp_type);
 	return *this;
 }
 
-Visualizer &Visualizer::set_scale(const Scale scale)
+Visualizer &Visualizer::set_scale(const FS::Scale scale)
 {
 	sr.set_scale(scale);
 	return *this;
@@ -44,14 +44,32 @@ Visualizer &Visualizer::set_nth_root(const int nth_root)
 	return *this;
 }
 
-Visualizer &Visualizer::set_accum_method(const AccumulationMethod method)
+Visualizer &Visualizer::set_accum_method(const FS::AccumulationMethod method)
 {
 	sr.set_accum_method(method);
 	return *this;
 }
 
-Visualizer &Visualizer::set_window_function(const WindowFunction wf)
+Visualizer &Visualizer::set_window_function(const FS::WindowFunction wf)
 {
 	sr.set_window_func(wf);
+	return *this;
+}
+
+Visualizer &Visualizer::set_bar_type(const SR::BarType type)
+{
+	sr.bar.set_type(type);
+	return *this;
+}
+
+Visualizer &Visualizer::set_bar_width(const int width)
+{
+	sr.bar.set_width(width);
+	return *this;
+}
+
+Visualizer &Visualizer::set_bar_spacing(const int spacing)
+{
+	sr.bar.set_spacing(spacing);
 	return *this;
 }

@@ -35,14 +35,13 @@ Args::Args(const int argc, const char *const *const argv)
 		.scan<'f', float>()
 		.validate();
 
-	add_argument("-a", "--accum")
+	add_argument("-a", "--accum-method")
 		.help("frequency bin accumulation method\n- 'sum': greater treble detail, exaggerated amplitude\n- 'max': less treble detail, true-to-waveform amplitude")
 		.choices("sum", "max")
-		.nargs(1)
 		.default_value("max")
 		.validate();
 
-	add_argument("-w", "--window")
+	add_argument("-w", "--window-func")
 		.help("set window function to use, or 'none'.\nwindow functions can reduce 'wiggling' in bass frequencies.\nhowever they can reduce overall amplitude, so adjust '-m' accordingly.")
 		.choices("none", "hanning", "hamming", "blackman")
 		.default_value("blackman")
@@ -75,11 +74,29 @@ Args::Args(const int argc, const char *const *const argv)
 
 	add_argument("--width")
 		.help("window width in pixels")
+		.default_value(800)
 		.scan<'i', int>()
 		.validate();
 	add_argument("--height")
 		.help("window height in pixels")
+		.default_value(600)
 		.scan<'i', int>()
+		.validate();
+	
+	add_argument("-bw", "--bar-width")
+		.help("bar width in pixels")
+		.default_value(10)
+		.scan<'i', int>()
+		.validate();
+	add_argument("-bs", "--bar-spacing")
+		.help("bar spacing in pixels")
+		.default_value(5)
+		.scan<'i', int>()
+		.validate();
+	add_argument("-bt", "--bar-type")
+		.help("bar type")
+		.choices("bar", "pill")
+		.default_value("bar")
 		.validate();
 
 	try
@@ -95,142 +112,4 @@ Args::Args(const int argc, const char *const *const argv)
 		// just exit here since we don't want to print anything after the help
 		_Exit(EXIT_FAILURE);
 	}
-}
-
-auto Args::to_visualizer() -> std::unique_ptr<Visualizer>
-{
-	std::unique_ptr<Visualizer> viz(new Visualizer(get("audio_file")));
-
-	try
-	{
-		viz->set_sample_size(get<int>("-n"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		viz->set_multiplier(get<float>("-m"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		viz->set_width(get<int>("--width"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	try
-	{
-		viz->set_height(get<int>("--height"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
-	}
-
-	{ // accumulation method
-		const auto &am_str = get("-a");
-		if (am_str == "sum")
-			viz->set_accum_method(FS::AccumulationMethod::SUM);
-		else if (am_str == "max")
-			viz->set_accum_method(FS::AccumulationMethod::MAX);
-		else if (am_str == "avg")
-			viz->set_accum_method(FS::AccumulationMethod::AVERAGE);
-		else if (am_str == "rms")
-			viz->set_accum_method(FS::AccumulationMethod::RMS);
-		else
-			throw std::invalid_argument("unknown accumulation method: " + am_str);
-	}
-
-	{ // window function
-		const auto &wf_str = get("-w");
-		if (wf_str == "hanning")
-			viz->set_window_function(FS::WindowFunction::HANNING);
-		else if (wf_str == "hamming")
-			viz->set_window_function(FS::WindowFunction::HAMMING);
-		else if (wf_str == "blackman")
-			viz->set_window_function(FS::WindowFunction::BLACKMAN);
-		else if (wf_str == "none")
-			viz->set_window_function(FS::WindowFunction::NONE);
-		else
-			throw std::invalid_argument("unknown window function: " + wf_str);
-	}
-
-	{ // interpolation type
-		const auto &interp_str = get("-i");
-		if (interp_str == "none")
-			viz->set_interp_type(FS::InterpolationType::NONE);
-		else if (interp_str == "linear")
-			viz->set_interp_type(FS::InterpolationType::LINEAR);
-		else if (interp_str == "cspline")
-			viz->set_interp_type(FS::InterpolationType::CSPLINE);
-		else if (interp_str == "cspline_hermite")
-			viz->set_interp_type(FS::InterpolationType::CSPLINE_HERMITE);
-		else
-			throw std::invalid_argument("unknown interpolation type: " + interp_str);
-	}
-
-	// { // spectrum coloring type
-	// 	const auto &color_str = get("--color");
-	// 	if (color_str == "wheel")
-	// 	{
-	// 		viz->set_color_type(ColorType::WHEEL);
-	// 		const auto &hsv_strs = get<std::vector<std::string>>("--hsv");
-	// 		if (hsv_strs.size())
-	// 			viz->set_wheel_hsv({std::stof(hsv_strs[0]), std::stof(hsv_strs[1]), std::stof(hsv_strs[2])});
-	// 		viz->set_wheel_rate(get<float>("--wheel-rate"));
-	// 	}
-	// 	else if (color_str == "solid")
-	// 	{
-	// 		viz->set_color_type(ColorType::SOLID);
-	// 		const auto &rgb_strs = get<std::vector<std::string>>("--rgb");
-	// 		if (rgb_strs.size())
-	// 			viz->set_solid_color({std::stoi(rgb_strs[0]), std::stoi(rgb_strs[1]), std::stoi(rgb_strs[2])});
-	// 	}
-	// 	else if (color_str == "none")
-	// 		viz->set_color_type(ColorType::NONE);
-	// 	else
-	// 		throw std::invalid_argument("unknown coloring type: " + color_str);
-	// }
-
-	{ // frequency scale (x-axis)
-		const auto &scale_str = get("-s");
-		if (scale_str == "linear")
-			viz->set_scale(FS::Scale::LINEAR);
-		else if (scale_str == "log")
-			viz->set_scale(FS::Scale::LOG);
-		else if (scale_str == "nth-root")
-		{
-			viz->set_scale(FS::Scale::NTH_ROOT);
-			const auto nth_root = get<float>("--nth-root");
-			if (!nth_root)
-				throw std::invalid_argument("nth_root cannot be zero!");
-			viz->set_nth_root(nth_root);
-		}
-		else
-			throw std::invalid_argument("unknown scale: " + scale_str);
-	}
-
-	return viz;
 }

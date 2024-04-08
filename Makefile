@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -Wextra -Wno-subobject-linkage -std=gnu++23 $(if $(release),-O3,-g)
+CFLAGS = -Wall -Wextra -Wno-subobject-linkage -std=gnu++23 -MMD $(if $(release),-O3,-g)
 INCLUDE = -Iinclude -I/usr/include/SDL2
 LDLIBS = -lsndfile -lfftw3f -lSDL2 -lSDL2_gfx -lSDL2pp -lportaudio
 OBJDIR = obj
@@ -10,6 +10,8 @@ SRCDIR = src
 SRCS = $(wildcard $(SRCDIR)/*.cpp)
 # List of object files
 OBJS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SRCS))
+# List of dependency files
+DEPS = $(OBJS:.o=.d)
 
 # Default target
 all: clear makedirs $(BINDIR)/a.out
@@ -32,5 +34,8 @@ clean:
 
 clear:
 	clear
+
+# Include the dependency files
+-include $(DEPS)
 
 .PHONY: all makedirs clean

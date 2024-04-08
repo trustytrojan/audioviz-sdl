@@ -26,9 +26,7 @@ public:
 	enum class AccumulationMethod
 	{
 		SUM,
-		MAX,
-		AVERAGE,
-		RMS
+		MAX
 	};
 
 	enum class WindowFunction

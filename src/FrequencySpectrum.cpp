@@ -43,19 +43,6 @@ void FrequencySpectrum::render(std::vector<float> &spectrum)
 	// zero out array since we are accumulating
 	std::ranges::fill(spectrum, 0);
 
-	// average counts vector
-	static std::vector<int> avg_counts(spectrum.size(), 0);
-	switch (am)
-	{
-	case AccumulationMethod::AVERAGE:
-	case AccumulationMethod::RMS:
-		if (avg_counts.size() != spectrum.size())
-			avg_counts.resize(spectrum.size());
-		std::ranges::fill(avg_counts, 0);
-	default:
-		break;
-	}
-
 	// map frequency bins of freqdata to spectrum
 	for (int i = 0; i < fftw.output_size(); ++i)
 	{
@@ -67,16 +54,8 @@ void FrequencySpectrum::render(std::vector<float> &spectrum)
 
 		switch (am)
 		{
-		case AccumulationMethod::AVERAGE:
-			++avg_counts[index];
-			// fallthrough
 		case AccumulationMethod::SUM:
 			spectrum[index] += amplitude;
-			break;
-
-		case AccumulationMethod::RMS:
-			++avg_counts[index];
-			spectrum[index] += amplitude * amplitude;
 			break;
 
 		case AccumulationMethod::MAX:
@@ -86,30 +65,6 @@ void FrequencySpectrum::render(std::vector<float> &spectrum)
 		default:
 			throw std::logic_error("FrequencySpectrum::render: switch(accum_type): default case hit");
 		}
-	}
-
-	// finalize average/rms calculation
-	switch (am)
-	{
-	case AccumulationMethod::AVERAGE:
-	case AccumulationMethod::RMS:
-		for (size_t i = 0; i < spectrum.size(); ++i)
-			if (avg_counts[i])
-				switch (am)
-				{
-				case AccumulationMethod::AVERAGE:
-					spectrum[i] /= avg_counts[i];
-					break;
-
-				case AccumulationMethod::RMS:
-					spectrum[i] = sqrt(spectrum[i] / avg_counts[i]);
-					break;
-
-				default:
-					throw std::logic_error("FrequencySpectrum::render: switch(am): default case hit");
-				}
-	default:
-		break;
 	}
 
 	// apply interpolation if necessary

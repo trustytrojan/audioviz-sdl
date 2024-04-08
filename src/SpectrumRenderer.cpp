@@ -1,19 +1,5 @@
 #include "SpectrumRenderer.hpp"
 
-SpectrumRenderer::SpectrumRenderer(const int sample_size, SDL2pp::Window &window, const Uint32 flags)
-	: MyRenderer(window, flags),
-	  fs(sample_size) {}
-
-void SpectrumRenderer::set_sample_size(const int sample_size)
-{
-	fs.set_fft_size(sample_size);
-}
-
-void SpectrumRenderer::set_multiplier(const float multiplier)
-{
-	this->multiplier = multiplier;
-}
-
 void SpectrumRenderer::render_spectrum(const SDL2pp::Rect &rect, const bool backwards)
 {
 	// resize spectrum first! this is the old formula, except now it's relative to the passed in rect.

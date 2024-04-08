@@ -3,7 +3,7 @@
 
 Visualizer::Visualizer(const std::string &audio_file, const int width, const int height)
 	: audio_file(audio_file),
-	  window("My Audio Visualizer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE)
+	  window("audioviz", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE)
 {
 	// get refresh rate
 	SDL_DisplayMode mode;
@@ -16,7 +16,8 @@ void Visualizer::start()
 	PortAudio pa;
 	auto pa_stream = pa.stream(0, sf.channels(), paFloat32, sf.samplerate(), sample_size);
 	std::chrono::_V2::system_clock::time_point start;
-	for (int frame = 0;; ++frame)
+	int frame = 0;
+	for (; frame < total_frames; ++frame)
 	{
 		handleEvents();
 
@@ -29,10 +30,10 @@ void Visualizer::start()
 		// read in audio from file, write to portaudio stream
 		const auto frames_read = sf.readf(audio_buffer.data(), sample_size);
 		if (!frames_read)
-			return;
+			break;
 		try_write_audio_buffer(pa_stream);
 		if (frames_read != sample_size)
-			return;
+			break;
 
 		// clear the screen
 		sr.SetDrawColor().Clear();
@@ -67,6 +68,7 @@ void Visualizer::start()
 		// seek audio file back
 		sf.seek(audio_frames_per_video_frame() - sample_size, SEEK_CUR);
 	}
+	print_render_stats(frame, start);
 }
 
 void Visualizer::print_render_stats(const int frame, const std::chrono::_V2::system_clock::time_point &start)
@@ -147,11 +149,36 @@ void Visualizer::encode_to_video_popen(const std::string &output_file)
 	{
 		if (frames_read != sample_size)
 			break;
-		// sr.SetDrawColor().Clear();
-		// do_actual_rendering();
-		// sr.ReadPixels(SDL2pp::NullOpt, SDL_PIXELFORMAT_RGB24, pixels, 3 * window.GetWidth());
+		
+		// clear screen
+		sr.SetDrawColor().Clear();
+
+		// default for stereo
+		if (sf.channels() == 2)
+		{
+			const auto h = window.GetHeight() - 10;
+			SDL2pp::Rect
+				rect1(5, 5, (window.GetWidth() - 10) / 2, h),
+				rect2(rect1.x + rect1.w + 4, 5, (window.GetWidth() - 18) / 2, h);
+			sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), 0, true);
+			sr.render_spectrum(rect1, true);
+			sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), 1, true);
+			sr.render_spectrum(rect2, false);
+		}
+		// default for mono
+		else
+		{
+			SDL2pp::Rect rect(0, 0, window.GetWidth(), window.GetHeight());
+			sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), 0, false);
+			sr.render_spectrum(rect, false);
+		}
+
+		// get pixels from backbuffer, send to ffmpeg
+		sr.ReadPixels(SDL2pp::NullOpt, SDL_PIXELFORMAT_RGB24, pixels, 3 * window.GetWidth());
 		if (fwrite(pixels, 1, framesize, ffmpeg) < framesize)
 			throw std::runtime_error(std::string("fwrite: ") + strerror(errno));
+		
+		// seek audio backwards to get next chunk to play
 		sf.seek(audio_frames_per_video_frame() - sample_size, SEEK_CUR);
 	}
 

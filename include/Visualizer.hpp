@@ -16,19 +16,17 @@ public:
 		SOLID
 	};
 
-	using Scale = FrequencySpectrum::Scale;
-	using InterpType = FrequencySpectrum::InterpolationType;
-	using AccumulationMethod = FrequencySpectrum::AccumulationMethod;
-	using WindowFunction = FrequencySpectrum::WindowFunction;
+	using FS = FrequencySpectrum;
+	using SR = SpectrumRenderer;
 
 private:
 	// general parameters
 	int sample_size = 3000;
-	const std::string &audio_file;
+	const std::string audio_file;
 
 	// SDL2pp window and renderer
 	SDL2pp::Window window;
-	SpectrumRenderer sr = SpectrumRenderer(sample_size, window, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	SR sr = SR(sample_size, window, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
 	// open audio file
 	SndfileHandle sf = audio_file;
@@ -78,14 +76,14 @@ public:
 	 * @param interp new interpolation type to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_interp_type(const InterpType interp_type);
+	Visualizer &set_interp_type(const FS::InterpolationType interp_type);
 
 	/**
 	 * Set the spectrum's frequency scale.
 	 * @param scale new scale to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_scale(const Scale scale);
+	Visualizer &set_scale(const FS::Scale scale);
 
 	/**
 	 * Set the nth-root to use when using the `NTH_ROOT` scale.
@@ -102,14 +100,18 @@ public:
 	 * @param interp new accumulation method to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_accum_method(const AccumulationMethod method);
+	Visualizer &set_accum_method(const FS::AccumulationMethod method);
 
 	/**
 	 * Set window function.
 	 * @param interp new window function to use
 	 * @returns reference to self
 	 */
-	Visualizer &set_window_function(const WindowFunction wf);
+	Visualizer &set_window_function(const FS::WindowFunction wf);
+
+	Visualizer &set_bar_type(const SR::BarType type);
+	Visualizer &set_bar_width(const int width);
+	Visualizer &set_bar_spacing(const int spacing);
 
 private:
 	int audio_frames_per_video_frame() const { return sf.samplerate() / refresh_rate; }
