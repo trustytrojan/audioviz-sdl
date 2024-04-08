@@ -30,9 +30,6 @@ private:
 	SDL2pp::Window window;
 	SpectrumRenderer sr = SpectrumRenderer(sample_size, window, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-	// spectrum renderer
-	FrequencySpectrum fs = sample_size;
-
 	// open audio file
 	SndfileHandle sf = audio_file;
 
@@ -47,6 +44,7 @@ private:
 		return mode.refresh_rate;
 	}();
 
+	// total spectrum/video frames to render from audio
 	const int total_frames = sf.frames() / audio_frames_per_video_frame();
 
 public:
@@ -115,7 +113,7 @@ public:
 
 private:
 	int audio_frames_per_video_frame() const { return sf.samplerate() / refresh_rate; }
-	void print_render_stats(const int frame, const std::chrono::nanoseconds draw_time, const double fps);
+	void print_render_stats(const int frame, const std::chrono::_V2::system_clock::time_point &start);
 	void try_write_audio_buffer(PortAudio::Stream &pa_stream);
 	void handleEvents();
 };

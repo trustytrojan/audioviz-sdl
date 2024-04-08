@@ -150,27 +150,31 @@ auto Args::to_visualizer() -> std::unique_ptr<Visualizer>
 	}
 
 	{ // accumulation method
-		const auto &acc_method_str = get("-a");
-		if (acc_method_str == "sum")
+		const auto &am_str = get("-a");
+		if (am_str == "sum")
 			viz->set_accum_method(FS::AccumulationMethod::SUM);
-		else if (acc_method_str == "max")
+		else if (am_str == "max")
 			viz->set_accum_method(FS::AccumulationMethod::MAX);
+		else if (am_str == "avg")
+			viz->set_accum_method(FS::AccumulationMethod::AVERAGE);
+		else if (am_str == "rms")
+			viz->set_accum_method(FS::AccumulationMethod::RMS);
 		else
-			throw std::invalid_argument("unknown accumulation method: " + acc_method_str);
+			throw std::invalid_argument("unknown accumulation method: " + am_str);
 	}
 
 	{ // window function
-		const auto &wfunc_str = get("-w");
-		if (wfunc_str == "hanning")
+		const auto &wf_str = get("-w");
+		if (wf_str == "hanning")
 			viz->set_window_function(FS::WindowFunction::HANNING);
-		else if (wfunc_str == "hamming")
+		else if (wf_str == "hamming")
 			viz->set_window_function(FS::WindowFunction::HAMMING);
-		else if (wfunc_str == "blackman")
+		else if (wf_str == "blackman")
 			viz->set_window_function(FS::WindowFunction::BLACKMAN);
-		else if (wfunc_str == "none")
+		else if (wf_str == "none")
 			viz->set_window_function(FS::WindowFunction::NONE);
 		else
-			throw std::invalid_argument("unknown window function: " + wfunc_str);
+			throw std::invalid_argument("unknown window function: " + wf_str);
 	}
 
 	{ // interpolation type

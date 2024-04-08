@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include <fftw3.h>
 
 class fftwf_dft_r2c_1d
@@ -30,6 +31,8 @@ public:
 
 	void set_n(const int N)
 	{
+		if (!N)
+			throw std::invalid_argument("N is zero");
 		if (this->N == N) return;
 		cleanup();
 		init(N);

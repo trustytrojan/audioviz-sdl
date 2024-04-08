@@ -26,7 +26,9 @@ public:
 	enum class AccumulationMethod
 	{
 		SUM,
-		MAX
+		MAX,
+		AVERAGE,
+		RMS
 	};
 
 	enum class WindowFunction
@@ -40,11 +42,10 @@ public:
 private:
 	// fft size
 	int fft_size;
-	float fftsize_inv = 1.f / fft_size;
 
 	// nth root
 	int nth_root = 2;
-	float nth_root_inverse = 1.f / nth_root;
+	float nthroot_inv = 1.f / nth_root;
 
 	// fftw initialization
 	fftwf_dft_r2c_1d fftw = fft_size;
@@ -73,7 +74,7 @@ private:
 			log = ::log(max);
 			sqrt = ::sqrt(max);
 			cbrt = ::cbrt(max);
-			nthroot = ::pow(max, fs.nth_root_inverse);
+			nthroot = ::pow(max, fs.nthroot_inv);
 		}
 	} scale_max;
 
@@ -153,6 +154,7 @@ public:
 	void render(std::vector<float> &spectrum);
 
 private:
+	float window_func(int i);
 	void apply_window_func(float *timedata);
 	int calc_index(int i, int max_index);
 	float calc_index_ratio(float i);

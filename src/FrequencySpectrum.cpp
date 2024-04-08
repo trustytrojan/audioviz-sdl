@@ -1,6 +1,7 @@
 #include "FrequencySpectrum.hpp"
 #include <stdexcept>
 #include <cstring>
+#include <memory>
 
 FrequencySpectrum::FrequencySpectrum(const int fft_size)
 	: fft_size(fft_size)
@@ -30,24 +31,52 @@ void FrequencySpectrum::copy_channel_to_input(const float *const audio, const in
 
 void FrequencySpectrum::render(std::vector<float> &spectrum)
 {
-	apply_window_func(fftw.input());
+	// apply window function on input
+	const auto input = fftw.input();
+	for (int i = 0; i < fft_size; ++i)
+		input[i] *= window_func(i);
+
+	// execute fft and get output
 	fftw.execute();
 	const auto output = fftw.output();
 
 	// zero out array since we are accumulating
 	std::ranges::fill(spectrum, 0);
 
+	// average counts vector
+	static std::vector<int> avg_counts(spectrum.size(), 0);
+	switch (am)
+	{
+	case AccumulationMethod::AVERAGE:
+	case AccumulationMethod::RMS:
+		if (avg_counts.size() != spectrum.size())
+			avg_counts.resize(spectrum.size());
+		std::ranges::fill(avg_counts, 0);
+	default:
+		break;
+	}
+
 	// map frequency bins of freqdata to spectrum
 	for (int i = 0; i < fftw.output_size(); ++i)
 	{
 		const auto [re, im] = output[i];
-		const float amplitude = sqrt((re * re) + (im * im));
+		// must divide by fft_size here to counteract the correlation
+		// between fft_size and the average amplitude across the spectrum vector.
+		const float amplitude = sqrt((re * re) + (im * im)) / fft_size;
 		const auto index = calc_index(i, spectrum.size());
 
 		switch (am)
 		{
+		case AccumulationMethod::AVERAGE:
+			++avg_counts[index];
+			// fallthrough
 		case AccumulationMethod::SUM:
 			spectrum[index] += amplitude;
+			break;
+
+		case AccumulationMethod::RMS:
+			++avg_counts[index];
+			spectrum[index] += amplitude * amplitude;
 			break;
 
 		case AccumulationMethod::MAX:
@@ -59,41 +88,47 @@ void FrequencySpectrum::render(std::vector<float> &spectrum)
 		}
 	}
 
-	// downscale all amplitudes by 1 / fft_size
-	// this is because with smaller fft_size's, frequency bins are bigger
-	// so more frequencies get lumped together, causing higher amplitudes per bin.
-	for (auto &a : spectrum)
-		a *= fftsize_inv;
+	// finalize average/rms calculation
+	switch (am)
+	{
+	case AccumulationMethod::AVERAGE:
+	case AccumulationMethod::RMS:
+		for (size_t i = 0; i < spectrum.size(); ++i)
+			if (avg_counts[i])
+				switch (am)
+				{
+				case AccumulationMethod::AVERAGE:
+					spectrum[i] /= avg_counts[i];
+					break;
+
+				case AccumulationMethod::RMS:
+					spectrum[i] = sqrt(spectrum[i] / avg_counts[i]);
+					break;
+
+				default:
+					throw std::logic_error("FrequencySpectrum::render: switch(am): default case hit");
+				}
+	default:
+		break;
+	}
 
 	// apply interpolation if necessary
 	if (interp != InterpolationType::NONE && scale != Scale::LINEAR)
 		interpolate(spectrum);
 }
 
-void FrequencySpectrum::apply_window_func(float *const timedata)
+float FrequencySpectrum::window_func(const int i)
 {
 	switch (wf)
 	{
 	case WindowFunction::HANNING:
-		for (int i = 0; i < fft_size; ++i)
-			timedata[i] *= 0.5f * (1 - cos(2 * M_PI * i / (fft_size - 1)));
-		break;
-
+		return 0.5f * (1 - cos(2 * M_PI * i / (fft_size - 1)));
 	case WindowFunction::HAMMING:
-		for (int i = 0; i < fft_size; ++i)
-			timedata[i] *= 0.54f - 0.46f * cos(2 * M_PI * i / (fft_size - 1));
-		break;
-
+		return 0.54f - 0.46f * cos(2 * M_PI * i / (fft_size - 1));
 	case WindowFunction::BLACKMAN:
-		for (int i = 0; i < fft_size; ++i)
-			timedata[i] *= 0.42f - 0.5f * cos(2 * M_PI * i / (fft_size - 1)) + 0.08f * cos(4 * M_PI * i / (fft_size - 1));
-		break;
-
-	case WindowFunction::NONE:
-		break;
-
+		return 0.42f - 0.5f * cos(2 * M_PI * i / (fft_size - 1)) + 0.08f * cos(4 * M_PI * i / (fft_size - 1));
 	default:
-		throw std::logic_error("FrequencySpectrum::apply_window_func: default case hit");
+		throw std::logic_error("FrequencySpectrum::window_func: default case hit");
 	}
 }
 
@@ -120,7 +155,7 @@ float FrequencySpectrum::calc_index_ratio(const float i)
 		case 3:
 			return cbrt(i) / scale_max.cbrt;
 		default:
-			return pow(i, nth_root_inverse) / scale_max.nthroot;
+			return pow(i, nthroot_inv) / scale_max.nthroot;
 		}
 	default:
 		throw std::logic_error("FrequencySpectrum::calc_index_ratio: default case hit");

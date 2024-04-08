@@ -112,7 +112,7 @@ public:
 		fs.set_accum_method(method);
 	}
 
-	void set_window_function(const FS::WindowFunction wf)
+	void set_window_func(const FS::WindowFunction wf)
 	{
 		fs.set_window_func(wf);
 	}
