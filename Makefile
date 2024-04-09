@@ -35,6 +35,10 @@ clean:
 clear:
 	clear
 
+# Install to system
+install:
+	cp bin/a.out /usr/local/bin/audioviz
+
 # Include the dependency files
 -include $(DEPS)
 
