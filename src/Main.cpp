@@ -8,6 +8,7 @@ Main::Main(const int argc, const char *const *const argv)
 	set_multiplier(get<float>("-m"));
 	set_bar_width(get<uint>("-bw"));
 	set_bar_spacing(get<uint>("-bs"));
+	set_mono(get<int>("--mono"));
 
 	{ // bar type
 		const auto &bt_str = get("-bt");
@@ -63,6 +64,7 @@ Main::Main(const int argc, const char *const *const argv)
 		{
 			set_color_mode(SR::ColorMode::WHEEL);
 			const auto &hsv = get<std::vector<float>>("--hsv");
+			assert(hsv.size() == 3);
 			set_color_wheel_hsv({hsv[0], hsv[1], hsv[2]});
 			set_color_wheel_rate(get<float>("--wheel-rate"));
 		}
@@ -94,17 +96,22 @@ Main::Main(const int argc, const char *const *const argv)
 			throw std::invalid_argument("unknown scale: " + scale_str);
 	}
 
-	// start!!!!
-	try
+	const auto &encode_args = get<std::vector<std::string>>("--encode");
+	switch (encode_args.size())
 	{
-		encode_to_video_popen(get("--encode"));
-	}
-	catch (std::invalid_argument &)
-	{
-		throw;
-	}
-	catch (std::logic_error &)
-	{
+	case 0:
 		start();
+		break;
+	case 2:
+		encode_to_video(encode_args[0], std::atoi(encode_args[1].c_str()));
+		break;
+	case 3:
+		encode_to_video(encode_args[0], std::atoi(encode_args[1].c_str()), encode_args[2]);
+		break;
+	case 4:
+		encode_to_video(encode_args[0], std::atoi(encode_args[1].c_str()), encode_args[2], encode_args[3]);
+		break;
+	default:
+		throw std::logic_error("--encode should only have 2-4 arguments");
 	}
 }

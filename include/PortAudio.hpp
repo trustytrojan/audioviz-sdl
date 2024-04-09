@@ -9,7 +9,10 @@ struct PortAudio
 	class Error : public std::runtime_error
 	{
 		friend class PortAudio;
-		Error(const PaError err) : std::runtime_error(std::string("portaudio: ") + Pa_GetErrorText(err)) {}
+		Error(const PaError err) : std::runtime_error(std::string("portaudio: ") + Pa_GetErrorText(err)), err(err) {}
+
+	public:
+		const PaError err;
 	};
 
 	class Stream
