@@ -17,7 +17,7 @@ Args::Args(const int argc, const char *const *const argv)
 
 	add_argument("-n", "--sample-size")
 		.help("number of samples to process at a time\n- higher amount increases accuracy\n- lower amount increases responsiveness")
-		.default_value(3000)
+		.default_value(3000u)
 		.scan<'u', uint>()
 		.validate();
 
@@ -72,23 +72,23 @@ Args::Args(const int argc, const char *const *const argv)
 
 	add_argument("--width")
 		.help("window width in pixels")
-		.default_value(800)
+		.default_value(800u)
 		.scan<'u', uint>()
 		.validate();
 	add_argument("--height")
 		.help("window height in pixels")
-		.default_value(600)
+		.default_value(600u)
 		.scan<'u', uint>()
 		.validate();
 	
 	add_argument("-bw", "--bar-width")
 		.help("bar width in pixels")
-		.default_value(10)
+		.default_value(10u)
 		.scan<'u', uint>()
 		.validate();
 	add_argument("-bs", "--bar-spacing")
 		.help("bar spacing in pixels")
-		.default_value(5)
+		.default_value(5u)
 		.scan<'u', uint>()
 		.validate();
 	add_argument("-bt", "--bar-type")

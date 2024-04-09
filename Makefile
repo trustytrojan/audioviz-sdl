@@ -17,16 +17,16 @@ DEPS = $(OBJS:.o=.d)
 all: clear makedirs $(BINDIR)/a.out
 
 # Linking
-$(BINDIR)/a.out: $(OBJS)
+$(BINDIR)/a.out: $(OBJS) | $(BINDIR)
 	$(CC) $^ $(LDLIBS) -o $@
 
 # Compilation
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
 # Create necessary directories
-makedirs:
-	mkdir -p $(BINDIR) $(OBJDIR)
+$(BINDIR) $(OBJDIR):
+	mkdir -p $@
 
 # Clean up
 clean:

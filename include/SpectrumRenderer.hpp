@@ -90,12 +90,23 @@ public:
 	class
 	{
 		friend class SpectrumRenderer;
-		int width = 10, spacing = 5;
+		uint width = 10, spacing = 5;
 		BarType type = BarType::PILL;
 
 	public:
-		void set_width(const int width) { this->width = width; }
-		void set_spacing(const int spacing) { this->spacing = spacing; }
+		uint get_spacing() const { return spacing; }
+		void set_width(const uint width)
+		{
+			if (!width)
+				throw std::invalid_argument("width cannot be zero");
+			this->width = width;
+		}
+		void set_spacing(const uint spacing)
+		{
+			if (!spacing)
+				throw std::invalid_argument("spacing cannot be zero");
+			this->spacing = spacing;
+		}
 		void set_type(const BarType type) { this->type = type; }
 	} bar;
 

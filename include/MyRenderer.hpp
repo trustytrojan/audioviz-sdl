@@ -11,19 +11,15 @@ class MyRenderer : public SDL2pp::Renderer
 public:
 	MyRenderer(SDL2pp::Window &window, Uint32 flags);
 
-	// (x, y) is the CENTER of the bar.
-	void drawBarCentered(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+	// (x, y) is the CENTER of the box (filled-color rectangle).
+	void drawBoxCentered(Uint16 x, Uint16 y, Uint16 w, Uint16 h, Uint8 r = 255, Uint8 g = 255, Uint8 b = 255, Uint8 a = 255);
 
-	// (x, y) is the BOTTOM-LEFT of the bar.
-	void drawBarFromBottom(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+	// (x, y) is the BOTTOM-LEFT of the box (filled-color rectangle).
+	void drawBoxFromBottomLeft(Uint16 x, Uint16 y, Uint16 w, Uint16 h, Uint8 r = 255, Uint8 g = 255, Uint8 b = 255, Uint8 a = 255);
 
-	// Draws a "pill" shape centered about (x, y), and with width `w` and height `h`.
-	// At `h = 0`, the drawn shape is essentially a circle.
-	void drawPillCentered(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+	// (x, y) is the BOTTOM of the circle.
+	void drawCircleFromBottomLeft(Uint16 x, Uint16 y, Uint16 rad, bool filled = true, Uint8 r = 255, Uint8 g = 255, Uint8 b = 255, Uint8 a = 255);
 
-	// Draws a "pill" shape with its bottom circle centered at (x, y), and with width `w` and height `h`.
-	// At `h = 0`, the drawn shape is essentially a circle.
-	void drawPillFromBottom(Sint16 x, Sint16 y, Sint16 w, Sint16 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-	void drawArc(Sint16 x, Sint16 y, Sint16 rad, Sint16 start, Sint16 end, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+	// (x, y) is the BOTTOM of the pill (rounded-rectangle with `x1 == x2`).
+	void drawPillFromBottomLeft(Uint16 x, Uint16 y, Uint16 w, Uint16 h, bool filled = true, Uint8 r = 255, Uint8 g = 255, Uint8 b = 255, Uint8 a = 255);
 };

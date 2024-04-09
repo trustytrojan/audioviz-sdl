@@ -1,13 +1,13 @@
 #include "Main.hpp"
 
 Main::Main(const int argc, const char *const *const argv)
-	: Args(argc, argv), Visualizer(get("audio_file"), get<int>("--width"), get<int>("--height"))
+	: Args(argc, argv), Visualizer(get("audio_file"), get<uint>("--width"), get<uint>("--height"))
 {
 	// all of these have default values, no need to try-catch
-	set_sample_size(get<int>("-n"));
+	set_sample_size(get<uint>("-n"));
 	set_multiplier(get<float>("-m"));
-	set_bar_width(get<int>("-bw"));
-	set_bar_spacing(get<int>("-bs"));
+	set_bar_width(get<uint>("-bw"));
+	set_bar_spacing(get<uint>("-bs"));
 
 	{ // bar type
 		const auto &bt_str = get("-bt");

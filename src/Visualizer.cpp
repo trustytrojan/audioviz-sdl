@@ -13,13 +13,16 @@ Visualizer::Visualizer(const std::string &audio_file, const int width, const int
 
 void Visualizer::do_actual_rendering()
 {
+	static const auto margin = 5;
 	// default for stereo
 	if (sf.channels() == 2 && mono < 0)
 	{
-		const auto h = window.GetHeight() - 10;
+		const auto w = (window.GetWidth() - 2 * margin - sr.bar.get_spacing()) / 2;
+		const auto h = window.GetHeight() - 2 * margin;
 		SDL2pp::Rect
-			rect1(5, 5, (window.GetWidth() - 10) / 2, h),
-			rect2(rect1.x + rect1.w + 4, 5, (window.GetWidth() - 18) / 2, h);
+			rect1(margin, margin, w, h),
+			rect2(rect1.x + rect1.w + sr.bar.get_spacing(), margin, w, h);
+		sr.SetDrawColor(255, 255, 255).DrawRect(rect1).DrawRect(rect2);
 		sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), 0, true);
 		sr.render_spectrum(rect1, true);
 		sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), 1, true);
