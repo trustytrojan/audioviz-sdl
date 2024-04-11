@@ -153,7 +153,6 @@ public:
 
 private:
 	float window_func(int i);
-	void apply_window_func(float *timedata);
 	int calc_index(int i, int max_index);
 	float calc_index_ratio(float i);
 	void interpolate(std::vector<float> &spectrum);

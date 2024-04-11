@@ -16,6 +16,10 @@ Args::Args(const int argc, const char *const *const argv)
 		.default_value(-1)
 		.scan<'i', int>()
 		.validate();
+	add_argument("--bg")
+		.help("add an image background")
+		.nargs(1, 2)
+		.validate();
 
 	add_argument("-n", "--sample-size")
 		.help("number of samples to process at a time\n- higher amount increases accuracy\n- lower amount increases responsiveness")
@@ -30,14 +34,9 @@ Args::Args(const int argc, const char *const *const argv)
 		.validate();
 
 	add_argument("-s", "--scale")
-		.help("spectrum frequency scale: 'linear', 'log', 'nth-root'")
-		.default_value("log");
-
-	add_argument("--nth-root")
-		.help("set the root to use with '--scale nth-root'")
-		.default_value(2.f)
-		.scan<'f', float>()
-		.validate();
+		.help("spectrum frequency scale: 'linear', 'log', 'nth-root'\nwith 'nth-root' you can specify a floating-point root\nthe default is 2, aka sqrt")
+		.nargs(1, 2)
+		.default_value(std::vector<std::string>{"log"});
 
 	add_argument("-a", "--accum-method")
 		.help("frequency bin accumulation method\n- 'sum': greater treble detail, exaggerated amplitude\n- 'max': less treble detail, true-to-waveform amplitude")
@@ -68,8 +67,8 @@ Args::Args(const int argc, const char *const *const argv)
 	add_argument("--rgb")
 		.help("requires '--color solid'\nrenders the spectrum with a solid color\nmust provide space-separated rgb integers")
 		.nargs(3)
-		.default_value(std::vector<Uint8>{255, 255, 255})
-		.scan<'u', Uint8>()
+		.default_value(std::vector<Uint16>{255, 255, 255})
+		.scan<'u', Uint16>()
 		.validate();
 
 	add_argument("--width")

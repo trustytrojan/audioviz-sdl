@@ -1,5 +1,10 @@
 #include "Visualizer.hpp"
 
+void Visualizer::set_background(bool enabled)
+{
+	background = enabled;
+}
+
 void Visualizer::set_width(const int width)
 {
 	window.SetSize(width, window.GetHeight());

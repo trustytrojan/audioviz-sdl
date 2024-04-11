@@ -1,4 +1,16 @@
 #include "Main.hpp"
+#include <boost/process.hpp>
+
+void blur_image(const std::string &filename, const int blur_radius)
+{
+	namespace bp = boost::process;
+	bp::child(bp::search_path("ffmpeg"),
+			  "-hide_banner", "-y",
+			  "-i", filename,
+			  "-vf", "boxblur=" + std::to_string(blur_radius) + ':' + std::to_string(blur_radius),
+			  ".blurred.jpg")
+		.wait();
+}
 
 Main::Main(const int argc, const char *const *const argv)
 	: Args(argc, argv), Visualizer(get("audio_file"), get<uint>("--width"), get<uint>("--height"))
@@ -71,33 +83,43 @@ Main::Main(const int argc, const char *const *const argv)
 		else if (color_str == "solid")
 		{
 			set_color_mode(SR::ColorMode::SOLID);
-			const auto &rgb = get<std::vector<Uint8>>("--rgb");
+			const auto &rgb = get<std::vector<Uint16>>("--rgb");
 			set_color_solid_rgb({rgb[0], rgb[1], rgb[2]});
 		}
 		else
 			throw std::invalid_argument("unknown coloring type: " + color_str);
 	}
 
-	{ // frequency scale (x-axis)
-		const auto &scale_str = get("-s");
-		if (scale_str == "linear")
+	// -s, --scale
+	switch (const auto &scale_args = get<std::vector<std::string>>("-s"); scale_args.size())
+	{
+	case 0:
+		break;
+	case 1:
+		if (scale_args[0] == "linear")
 			set_scale(FS::Scale::LINEAR);
-		else if (scale_str == "log")
+		else if (scale_args[0] == "log")
 			set_scale(FS::Scale::LOG);
-		else if (scale_str == "nth-root")
-		{
+		else if (scale_args[0] == "nth-root")
 			set_scale(FS::Scale::NTH_ROOT);
-			const auto nth_root = get<float>("--nth-root");
-			if (!nth_root)
-				throw std::invalid_argument("nth_root cannot be zero!");
-			set_nth_root(nth_root);
-		}
-		else
-			throw std::invalid_argument("unknown scale: " + scale_str);
+		break;
+	case 2:
+		if (scale_args[0] != "nth-root")
+			throw std::invalid_argument("only the 'nth-root' scale takes an additional argument");
+		set_nth_root(std::stoi(scale_args[1]));
 	}
 
-	const auto &encode_args = get<std::vector<std::string>>("--encode");
-	switch (encode_args.size())
+	// --bg
+	switch (const auto &bg_args = get<std::vector<std::string>>("--bg"); bg_args.size())
+	{
+	case 0:
+		break;
+	case 1:
+		set_background(true);
+	}
+
+	// --encode (decides whether we render to the window or to a video)
+	switch (const auto &encode_args = get<std::vector<std::string>>("--encode"); encode_args.size())
 	{
 	case 0:
 		start();

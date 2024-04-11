@@ -12,6 +12,8 @@ public:
 	using SR = SpectrumRenderer;
 
 protected:
+	inline static const char *const blurred_image = ".blurred.jpg";
+
 	// general parameters
 	int sample_size = 3000;
 	const std::string audio_file;
@@ -28,6 +30,8 @@ protected:
 
 	// if nonnegative, forces a mono spectrum with the specified channel
 	int mono = -1;
+
+	bool background = false;
 
 public:
 	// width and height matter if you are pre-rendering!
@@ -51,6 +55,7 @@ public:
 	void set_width(int width);
 	void set_height(int height);
 	void set_mono(int mono);
+	void set_background(bool enabled);
 
 	/**
 	 * Set the sample chunk size to use in internal calculations.

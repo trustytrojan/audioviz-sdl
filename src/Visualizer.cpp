@@ -7,13 +7,18 @@ Visualizer::Visualizer(const std::string &audio_file, const int width, const int
 
 void Visualizer::do_actual_rendering()
 {
+	static SDL2pp::Texture texture(sr, blurred_image);
+	sr.Copy(texture);
+	// sr.SetDrawColor().Clear();
+
 	static const auto margin = 5;
+
 	// default for stereo
 	if (sf.channels() == 2 && mono < 0)
 	{
 		const auto w = (window.GetWidth() - 2 * margin - sr.bar.get_spacing()) / 2;
 		const auto h = window.GetHeight() - 2 * margin;
-		SDL2pp::Rect
+		const SDL2pp::Rect
 			rect1(margin, margin, w, h),
 			rect2(rect1.x + rect1.w + sr.bar.get_spacing() - 1, margin, w, h);
 		// sr.SetDrawColor(255, 255, 255).DrawRect(rect1).DrawRect(rect2);
@@ -87,9 +92,6 @@ void Visualizer::start()
 		if (frames_read != sample_size)
 			break;
 
-		// clear the screen
-		sr.SetDrawColor().Clear();
-
 		// perform rendering while measuring time
 		draw_start = fps_start = hrc::now();
 		do_actual_rendering();
@@ -118,7 +120,6 @@ void Visualizer::handle_events()
 
 void Visualizer::encode_to_video(const std::string &output_file, const int fps, const std::string &vcodec, const std::string &acodec)
 {
-	const auto afpvf = sf.samplerate() / fps;
 	const auto width = window.GetWidth(),
 			   height = window.GetHeight();
 
@@ -127,17 +128,17 @@ void Visualizer::encode_to_video(const std::string &output_file, const int fps, 
 		"-hide_banner",
 		"-y",
 
-		// video
+		// input video
 		"-f", "rawvideo",
 		"-pix_fmt", "rgb24",
 		"-s:v", std::to_string(width) + "x" + std::to_string(height),
 		"-r", std::to_string(fps),
 		"-i", "-",
 
-		// audio
-		"-i", audio_file,
+		// input audio
+		"-i", '\'' + audio_file + '\'',
 
-		// copy audio stream (don't re-encode)
+		// output video and audio codecs
 		"-c:v", vcodec,
 		"-c:a", acodec,
 
@@ -145,13 +146,11 @@ void Visualizer::encode_to_video(const std::string &output_file, const int fps, 
 		"-shortest",
 
 		// output file
-		output_file};
+		'\'' + output_file + '\''};
 
 	std::ostringstream ss;
-	for (size_t i = 0; i < args.size() - 1; ++i)
-		ss << '\'' << args[i] << "' ";
-	ss << '\'' << args[args.size() - 1] << '\'';
-
+	for (const auto &arg : args)
+		ss << arg;
 	const auto command = ss.str();
 	std::cout << command << '\n';
 	const auto ffmpeg = popen(command.c_str(), "w");
@@ -162,23 +161,37 @@ void Visualizer::encode_to_video(const std::string &output_file, const int fps, 
 	const size_t framesize = 3 * width * height;
 	Uint8 pixels[framesize];
 
+	/**
+	 * there is a very slight a/v desync in output videos right now.
+	 * it seems the video lags ever so slightly behind the audio.
+	 * the biggest suspect is that sample_size is much larger than afpvf,
+	 * and we always seek back (sample_size - afpvf) after rendering one frame.
+	 * meaning the window that the fft calculates includes audio farther ahead
+	 * than that is currently being played. but that's counterintuitive:
+	 * wouldn't that mean the spectrum is ever so slightly ahead of the played audio?
+	 * this is very odd considering there is ZERO noticeable desync when rendering to a system window...
+	 *
+	 * potential solution: until the audio's window is centered to the spectrum's window, delay spectrum rendering,
+	 * 	and slowly have the audio's window move towards it?
+	 *
+	 * or i can tell ffmpeg to delay the audio a few milliseconds
+	 * lots of testing must occur
+	 */
+	const auto afpvf = sf.samplerate() / fps;
+
 	while (const auto frames_read = sf.readf(audio_buffer.data(), sample_size))
 	{
 		if (frames_read != sample_size)
 			break;
 
-		// clear screen
-		sr.SetDrawColor().Clear();
-
-		// no need to print render stats because ffmpeg shows that anyway
 		do_actual_rendering();
 
-		// get pixels from backbuffer, send to ffmpeg
+		// get pixels from renderer, send to ffmpeg
 		sr.ReadPixels(SDL2pp::NullOpt, SDL_PIXELFORMAT_RGB24, pixels, 3 * window.GetWidth());
 		if (fwrite(pixels, 1, framesize, ffmpeg) < framesize)
 			throw std::runtime_error(std::string("fwrite: ") + strerror(errno));
 
-		// seek audio backwards to get next chunk to play
+		// seek audio backwards to synchronize with the audio file
 		sf.seek(afpvf - sample_size, SEEK_CUR);
 	}
 
