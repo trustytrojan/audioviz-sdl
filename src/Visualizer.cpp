@@ -5,12 +5,41 @@ Visualizer::Visualizer(const std::string &audio_file, const int width, const int
 	: audio_file(audio_file),
 	  window("audioviz", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE) {}
 
+SDL2pp::Rect Visualizer::bg_texture_centered_max_width()
+{
+	const auto &texture = bg_texture_opt.value();
+	const float aspect_ratio = (float)window.GetWidth() / window.GetHeight();
+
+	// Calculate the height of the rectangle based on the renderer's aspect ratio
+	int rectHeight = static_cast<int>(texture.GetWidth() / aspect_ratio);
+	int rectWidth = texture.GetWidth();
+
+	// If the calculated height is greater than the image height, adjust the width and height
+	if (rectHeight > texture.GetHeight())
+	{
+		rectHeight = texture.GetHeight();
+		rectWidth = static_cast<int>(texture.GetHeight() * aspect_ratio);
+	}
+
+	// Calculate the position of the rectangle to center it
+	int rectX = (texture.GetWidth() - rectWidth) / 2;
+	int rectY = (texture.GetHeight() - rectHeight) / 2;
+
+	// Return the centered rectangle
+	return SDL2pp::Rect(rectX, rectY, rectWidth, rectHeight);
+}
+
 void Visualizer::do_actual_rendering()
 {
-	static SDL2pp::Texture texture(sr, blurred_image);
-	sr.Copy(texture);
-	// sr.SetDrawColor().Clear();
+	// yes i know we are unnecessarily creating rects on every frame
+	// but premature optimization is not always good
 
+	if (bg_texture_opt.has_value())
+		sr.Copy(bg_texture_opt.value(), bg_texture_centered_max_width());
+	else
+		sr.SetDrawColor().Clear();
+
+	// still need to parameterize this
 	static const auto margin = 5;
 
 	// default for stereo
@@ -21,6 +50,7 @@ void Visualizer::do_actual_rendering()
 		const SDL2pp::Rect
 			rect1(margin, margin, w, h),
 			rect2(rect1.x + rect1.w + sr.bar.get_spacing() - 1, margin, w, h);
+		// uncomment to debug spectrum boundaries
 		// sr.SetDrawColor(255, 255, 255).DrawRect(rect1).DrawRect(rect2);
 		sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), 0, true);
 		sr.render_spectrum(rect1, true);
@@ -60,6 +90,8 @@ void Visualizer::start()
 	// lambda function to print render stats
 	const auto print_render_stats = [&]
 	{
+		if (frame % 10)
+			return;
 		std::cout << "\r\e[2K\e[1A\e[2K\e[1A\e[2K"
 				  << "Frame/Total: " << frame << '/' << total_frames << " (" << (((double)frame / total_frames) * 100) << "%)\n"
 				  << "Draw time: " << draw_time << '\n'

@@ -15,3 +15,4 @@ here's a demo: https://youtu.be/0f_oSrnT6j0
 - [p-ranav/argparse](https://github.com/p-ranav/argparse)
 - [SDL2pp](https://github.com/libSDL2pp/libSDL2pp)
 - [ferzkopp/SDL2_gfx](https://github.com/ferzkopp/SDL2_gfx)
+- [ffmpeg](https://ffmpeg.org) - not required at compile-time; only for the `--encode` option

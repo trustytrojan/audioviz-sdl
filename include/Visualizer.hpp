@@ -31,7 +31,8 @@ protected:
 	// if nonnegative, forces a mono spectrum with the specified channel
 	int mono = -1;
 
-	bool background = false;
+	// background image filepath
+	SDL2pp::Optional<SDL2pp::Texture> bg_texture_opt;
 
 public:
 	// width and height matter if you are pre-rendering!
@@ -55,7 +56,12 @@ public:
 	void set_width(int width);
 	void set_height(int height);
 	void set_mono(int mono);
-	void set_background(bool enabled);
+
+	/**
+	 * Set a background image for the spectrum.
+	 * @param filepath path to image file, or empty string to disable background
+	 */
+	void set_background(const std::string &filepath);
 
 	/**
 	 * Set the sample chunk size to use in internal calculations.
@@ -149,4 +155,5 @@ public:
 private:
 	void handle_events();
 	void do_actual_rendering();
+	SDL2pp::Rect bg_texture_centered_max_width();
 };

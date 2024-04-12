@@ -17,9 +17,7 @@ Args::Args(const int argc, const char *const *const argv)
 		.scan<'i', int>()
 		.validate();
 	add_argument("--bg")
-		.help("add an image background")
-		.nargs(1, 2)
-		.validate();
+		.help("add a background image");
 
 	add_argument("-n", "--sample-size")
 		.help("number of samples to process at a time\n- higher amount increases accuracy\n- lower amount increases responsiveness")

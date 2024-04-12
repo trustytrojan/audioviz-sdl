@@ -1,8 +1,11 @@
 #include "Visualizer.hpp"
 
-void Visualizer::set_background(bool enabled)
+void Visualizer::set_background(const std::string &filepath)
 {
-	background = enabled;
+	if (filepath.size())
+		bg_texture_opt.emplace(sr, filepath);
+	else
+		bg_texture_opt.reset();
 }
 
 void Visualizer::set_width(const int width)

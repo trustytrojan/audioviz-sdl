@@ -1,16 +1,4 @@
 #include "Main.hpp"
-#include <boost/process.hpp>
-
-void blur_image(const std::string &filename, const int blur_radius)
-{
-	namespace bp = boost::process;
-	bp::child(bp::search_path("ffmpeg"),
-			  "-hide_banner", "-y",
-			  "-i", filename,
-			  "-vf", "boxblur=" + std::to_string(blur_radius) + ':' + std::to_string(blur_radius),
-			  ".blurred.jpg")
-		.wait();
-}
 
 Main::Main(const int argc, const char *const *const argv)
 	: Args(argc, argv), Visualizer(get("audio_file"), get<uint>("--width"), get<uint>("--height"))
@@ -21,6 +9,16 @@ Main::Main(const int argc, const char *const *const argv)
 	set_bar_width(get<uint>("-bw"));
 	set_bar_spacing(get<uint>("-bs"));
 	set_mono(get<int>("--mono"));
+
+	try
+	{
+		set_background(get("--bg"));
+	}
+	catch (const std::logic_error &e)
+	{
+		if (!strstr(e.what(), "No value provided"))
+			throw;
+	}
 
 	{ // bar type
 		const auto &bt_str = get("-bt");
@@ -107,15 +105,6 @@ Main::Main(const int argc, const char *const *const argv)
 		if (scale_args[0] != "nth-root")
 			throw std::invalid_argument("only the 'nth-root' scale takes an additional argument");
 		set_nth_root(std::stoi(scale_args[1]));
-	}
-
-	// --bg
-	switch (const auto &bg_args = get<std::vector<std::string>>("--bg"); bg_args.size())
-	{
-	case 0:
-		break;
-	case 1:
-		set_background(true);
 	}
 
 	// --encode (decides whether we render to the window or to a video)

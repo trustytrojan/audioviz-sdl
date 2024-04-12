@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -Wall -Wextra -Wno-subobject-linkage -std=gnu++23 -MMD $(if $(release),-O3,-g)
 INCLUDE = -Iinclude -I/usr/include/SDL2
-LDLIBS = -lsndfile -lfftw3f -lSDL2 -lSDL2_gfx -lSDL2pp -lportaudio -lboost_filesystem
+LDLIBS = -lsndfile -lfftw3f -lSDL2 -lSDL2_gfx -lSDL2pp -lportaudio
 OBJDIR = obj
 BINDIR = bin
 SRCDIR = src
