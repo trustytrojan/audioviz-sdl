@@ -9,6 +9,7 @@ Main::Main(const int argc, const char *const *const argv)
 	set_bar_width(get<uint>("-bw"));
 	set_bar_spacing(get<uint>("-bs"));
 	set_mono(get<int>("--mono"));
+	set_ffmpeg_path(get("--ffmpeg-path"));
 
 	try
 	{

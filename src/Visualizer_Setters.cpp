@@ -8,6 +8,11 @@ void Visualizer::set_background(const std::string &filepath)
 		bg_texture_opt.reset();
 }
 
+void Visualizer::set_ffmpeg_path(const std::string &path)
+{
+	ffmpeg_path = path;
+}
+
 void Visualizer::set_width(const int width)
 {
 	window.SetSize(width, window.GetHeight());

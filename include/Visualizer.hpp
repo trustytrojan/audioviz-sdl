@@ -34,6 +34,11 @@ protected:
 	// background image filepath
 	SDL2pp::Optional<SDL2pp::Texture> bg_texture_opt;
 
+	// text font
+	SDL2pp::Font font;
+
+	std::string ffmpeg_path = "ffmpeg";
+
 public:
 	// width and height matter if you are pre-rendering!
 	Visualizer(const std::string &audio_file, int width = 800, int height = 600);
@@ -56,6 +61,7 @@ public:
 	void set_width(int width);
 	void set_height(int height);
 	void set_mono(int mono);
+	void set_ffmpeg_path(const std::string &path);
 
 	/**
 	 * Set a background image for the spectrum.

@@ -1,9 +1,11 @@
 #include "Visualizer.hpp"
 #include "ColorUtils.hpp"
+#include <SDL2pp/SDLTTF.hh>
 
 Visualizer::Visualizer(const std::string &audio_file, const int width, const int height)
 	: audio_file(audio_file),
-	  window("audioviz", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE) {}
+	  window("audioviz", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE),
+	  font("/usr/share/fonts/TTF/Iosevka-Regular.ttc", 16) {}
 
 SDL2pp::Rect Visualizer::bg_texture_centered_max_width()
 {
@@ -32,7 +34,7 @@ SDL2pp::Rect Visualizer::bg_texture_centered_max_width()
 void Visualizer::do_actual_rendering()
 {
 	// yes i know we are unnecessarily creating rects on every frame
-	// but premature optimization is not always good
+	// but premature optimization is not always good, so i'll deal with it later
 
 	if (bg_texture_opt.has_value())
 		sr.Copy(bg_texture_opt.value(), bg_texture_centered_max_width());
@@ -50,7 +52,7 @@ void Visualizer::do_actual_rendering()
 		const SDL2pp::Rect
 			rect1(margin, margin, w, h),
 			rect2(rect1.x + rect1.w + sr.bar.get_spacing() - 1, margin, w, h);
-		// uncomment to debug spectrum boundaries
+		// uncomment to debug spectrum boundaries (which SpectrumRenderer should respect)
 		// sr.SetDrawColor(255, 255, 255).DrawRect(rect1).DrawRect(rect2);
 		sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), 0, true);
 		sr.render_spectrum(rect1, true);
@@ -64,10 +66,13 @@ void Visualizer::do_actual_rendering()
 		sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), mono, false);
 		sr.render_spectrum(rect, false);
 	}
+
+	// draw text
 }
 
 void Visualizer::start()
 {
+	// start portaudio stream for live audio playback
 	PortAudio pa;
 	auto pa_stream = pa.stream(0, sf.channels(), paFloat32, sf.samplerate(), sample_size);
 
@@ -155,34 +160,21 @@ void Visualizer::encode_to_video(const std::string &output_file, const int fps, 
 	const auto width = window.GetWidth(),
 			   height = window.GetHeight();
 
-	std::vector<std::string> args{
-		"/bin/ffmpeg",
-		"-hide_banner",
-		"-y",
-
-		// input video
-		"-f", "rawvideo",
-		"-pix_fmt", "rgb24",
-		"-s:v", std::to_string(width) + "x" + std::to_string(height),
-		"-r", std::to_string(fps),
-		"-i", "-",
-
-		// input audio
-		"-i", '\'' + audio_file + '\'',
-
-		// output video and audio codecs
-		"-c:v", vcodec,
-		"-c:a", acodec,
-
-		// end on shortest stream
-		"-shortest",
-
-		// output file
-		'\'' + output_file + '\''};
-
 	std::ostringstream ss;
-	for (const auto &arg : args)
-		ss << arg;
+	ss << '\'' << ffmpeg_path
+	   << "' -hide_banner -y -f rawvideo -pix_fmt rgb24 -s:v "
+	   << width << 'x' << height
+	   << " -r " << fps
+	   // this right here has solved the a/v desync!
+	   // i'm sure this delay isn't going to be the right number for every machine
+	   // but we're gonna roll with it
+	   << " -i - -ss -0.1 -i '" << audio_file
+	   << "' -c:v " << vcodec
+	   << " -c:a " << acodec
+	   << " -shortest '"
+	   << output_file
+	   << '\'';
+
 	const auto command = ss.str();
 	std::cout << command << '\n';
 	const auto ffmpeg = popen(command.c_str(), "w");
@@ -193,22 +185,6 @@ void Visualizer::encode_to_video(const std::string &output_file, const int fps, 
 	const size_t framesize = 3 * width * height;
 	Uint8 pixels[framesize];
 
-	/**
-	 * there is a very slight a/v desync in output videos right now.
-	 * it seems the video lags ever so slightly behind the audio.
-	 * the biggest suspect is that sample_size is much larger than afpvf,
-	 * and we always seek back (sample_size - afpvf) after rendering one frame.
-	 * meaning the window that the fft calculates includes audio farther ahead
-	 * than that is currently being played. but that's counterintuitive:
-	 * wouldn't that mean the spectrum is ever so slightly ahead of the played audio?
-	 * this is very odd considering there is ZERO noticeable desync when rendering to a system window...
-	 *
-	 * potential solution: until the audio's window is centered to the spectrum's window, delay spectrum rendering,
-	 * 	and slowly have the audio's window move towards it?
-	 *
-	 * or i can tell ffmpeg to delay the audio a few milliseconds
-	 * lots of testing must occur
-	 */
 	const auto afpvf = sf.samplerate() / fps;
 
 	while (const auto frames_read = sf.readf(audio_buffer.data(), sample_size))
