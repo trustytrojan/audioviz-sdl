@@ -3,6 +3,8 @@ my own audio visualizer, because after effects sucks.<br>
 for right now, audioviz only supports linux, but with the libraries i'm using, it shouldn't be hard to port to windows.<br>
 here's a demo: https://youtu.be/0f_oSrnT6j0
 
+the default parameters construct a spectrum inspired by [Spectrolizer](https://spectrolizer.aicore-software.com/)
+
 ## building
 1. install required [dependencies](#dependencies)
 2. run `make`
