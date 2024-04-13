@@ -12,16 +12,19 @@ Args::Args(const int argc, const char *const *const argv)
 		.nargs(2, 4)
 		.validate();
 	add_argument("--ffmpeg-path")
-		.help("specify ffmpeg path used with '--encode'")
-		.default_value("ffmpeg");
+		.help("specify ffmpeg path used with '--encode'");
 
 	add_argument("--mono")
 		.help("force a mono spectrum even if audio is stereo\nmust specify zero-indexed channel number to render\nnegative values disable this flag")
 		.default_value(-1)
 		.scan<'i', int>()
 		.validate();
+
 	add_argument("--bg")
-		.help("add a background image");
+		.help("add a background image; path to image file required");
+
+	add_argument("--album-art")
+		.help("render an album-art image next to the artist and title text; path to image file required");
 
 	add_argument("-n", "--sample-size")
 		.help("number of samples to process at a time\n- higher amount increases accuracy\n- lower amount increases responsiveness")
@@ -55,17 +58,20 @@ Args::Args(const int argc, const char *const *const argv)
 	add_argument("--color")
 		.help("enable a colorful spectrum!")
 		.default_value("wheel");
+
 	add_argument("--wheel-rate")
 		.help("requires '--color wheel'\nmoves the colors on the spectrum with time!\nvalue must be between [0, 1] - 0.005 is a good start")
 		.default_value(0.f)
 		.scan<'f', float>()
 		.validate();
+
 	add_argument("--hsv")
 		.help("requires '--color wheel'\nchoose a hue offset for the color wheel, saturation, and brightness\nvalues must be between [0, 1]")
 		.nargs(3)
 		.default_value(std::vector<float>{0.9, 0.7, 1})
 		.scan<'f', float>()
 		.validate();
+
 	add_argument("--rgb")
 		.help("requires '--color solid'\nrenders the spectrum with a solid color\nmust provide space-separated rgb integers")
 		.nargs(3)
@@ -78,6 +84,7 @@ Args::Args(const int argc, const char *const *const argv)
 		.default_value(800u)
 		.scan<'u', uint>()
 		.validate();
+
 	add_argument("--height")
 		.help("window height in pixels")
 		.default_value(600u)
@@ -89,11 +96,13 @@ Args::Args(const int argc, const char *const *const argv)
 		.default_value(10u)
 		.scan<'u', uint>()
 		.validate();
+
 	add_argument("-bs", "--bar-spacing")
 		.help("bar spacing in pixels")
 		.default_value(5u)
 		.scan<'u', uint>()
 		.validate();
+
 	add_argument("-bt", "--bar-type")
 		.help("spectrum bar style\n- 'bar': rectangular bar\n- 'pill': bar with rounded ends")
 		.default_value("pill");

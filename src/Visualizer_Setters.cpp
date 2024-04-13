@@ -3,9 +3,17 @@
 void Visualizer::set_background(const std::string &filepath)
 {
 	if (filepath.size())
-		bg_texture_opt.emplace(sr, filepath);
+		texture_opts.bg.emplace(sr, filepath);
 	else
-		bg_texture_opt.reset();
+		texture_opts.bg.reset();
+}
+
+void Visualizer::set_album_art(const std::string &filepath)
+{
+	if (filepath.size())
+		texture_opts.album_art.emplace(sr, filepath);
+	else
+		texture_opts.album_art.reset();
 }
 
 void Visualizer::set_ffmpeg_path(const std::string &path)

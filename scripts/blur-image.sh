@@ -5,5 +5,5 @@ filename="${filename%.*}"
 ffmpeg -y \
 	-loglevel 0 \
 	-i $1 \
-	-vf boxblur=$2:$2 \
+	-vf boxblur=$2:$2,lutyuv=y=val-50 \
 	$filename-blurred.jpg

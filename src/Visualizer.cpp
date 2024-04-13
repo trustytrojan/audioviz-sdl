@@ -5,11 +5,21 @@
 Visualizer::Visualizer(const std::string &audio_file, const int width, const int height)
 	: audio_file(audio_file),
 	  window("audioviz", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE),
-	  font("/usr/share/fonts/TTF/Iosevka-Regular.ttc", 16) {}
+	  font_large("/usr/share/fonts/TTF/Iosevka-Regular.ttc", 24),
+	  font_small("/usr/share/fonts/TTF/Iosevka-Regular.ttc", 18)
+{
+	font_large.SetStyle(TTF_STYLE_ITALIC);
+	const SDL2pp::Color text_color{255, 255, 255, 180};
+	if (const auto title = sf.getString(SF_STR_TITLE))
+		texture_opts.title_text.emplace(sr, font_large.RenderUTF8_Blended(title, text_color));
+	if (const auto artist = sf.getString(SF_STR_ARTIST))
+		texture_opts.artist_text.emplace(sr, font_small.RenderUTF8_Blended(artist, text_color));
+}
 
+// assumes `texture_opts.bg` has a value
 SDL2pp::Rect Visualizer::bg_texture_centered_max_width()
 {
-	const auto &texture = bg_texture_opt.value();
+	const auto &texture = texture_opts.bg.value();
 	const float aspect_ratio = (float)window.GetWidth() / window.GetHeight();
 
 	// Calculate the height of the rectangle based on the renderer's aspect ratio
@@ -33,22 +43,19 @@ SDL2pp::Rect Visualizer::bg_texture_centered_max_width()
 
 void Visualizer::do_actual_rendering()
 {
-	// yes i know we are unnecessarily creating rects on every frame
-	// but premature optimization is not always good, so i'll deal with it later
-
-	if (bg_texture_opt.has_value())
-		sr.Copy(bg_texture_opt.value(), bg_texture_centered_max_width());
-	else
-		sr.SetDrawColor().Clear();
+	const auto width = window.GetWidth(),
+			   height = window.GetHeight();
 
 	// still need to parameterize this
 	static const auto margin = 5;
 
+	sr.SetDrawColor().Clear();
+
 	// default for stereo
 	if (sf.channels() == 2 && mono < 0)
 	{
-		const auto w = (window.GetWidth() - 2 * margin - sr.bar.get_spacing()) / 2;
-		const auto h = window.GetHeight() - 2 * margin;
+		const auto w = (width - 2 * margin - sr.bar.get_spacing()) / 2;
+		const auto h = height - 2 * margin;
 		const SDL2pp::Rect
 			rect1(margin, margin, w, h),
 			rect2(rect1.x + rect1.w + sr.bar.get_spacing() - 1, margin, w, h);
@@ -62,12 +69,54 @@ void Visualizer::do_actual_rendering()
 	// default for mono
 	else
 	{
-		SDL2pp::Rect rect(margin, margin, window.GetWidth() - 2 * margin, window.GetHeight() - 2 * margin);
+		SDL2pp::Rect rect(margin, margin, width - 2 * margin, height - 2 * margin);
 		sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), mono, false);
 		sr.render_spectrum(rect, false);
 	}
 
-	// draw text
+	// apply shadow here (only if there is a background!)
+	SDL_Texture *shadowed_texture = NULL;
+	if (texture_opts.bg.has_value())
+	{
+		const auto surface = SDL_GetWindowSurface(window.Get());
+		const auto pixels = static_cast<SDL_Color *>(surface->pixels);
+		const auto num_pixels = width * height;
+		for (int i = 0; i < num_pixels; ++i)
+		{
+			if (!pixels[i].a)
+				continue;
+			if (i >= width && !pixels[i - width].a)
+				pixels[i - width].a = 100;
+			if (i >= 2 * width && !pixels[i - 2 * width].a)
+				pixels[i - 2 * width].a = 50;
+		}
+		shadowed_texture = SDL_CreateTextureFromSurface(sr.Get(), surface);
+		SDL_SetTextureBlendMode(shadowed_texture, SDL_BLENDMODE_BLEND);
+	}
+
+	// bg
+	if (texture_opts.bg.has_value())
+		sr.Copy(texture_opts.bg.value(), bg_texture_centered_max_width());
+	else
+		sr.SetDrawColor().Clear();
+	
+	// copy spectrum texture with shadow over
+	if (shadowed_texture)
+		SDL_RenderCopy(sr.Get(), shadowed_texture, NULL, NULL);
+
+	// metadata
+	const SDL2pp::Point metadata_start{40, 40};
+
+	const SDL2pp::Rect album_art_rect{metadata_start.x, metadata_start.y, 140, 140};
+	const auto album_art_texture_present = texture_opts.album_art.has_value();
+	if (album_art_texture_present)
+		sr.Copy(texture_opts.album_art.value(), SDL2pp::NullOpt, album_art_rect);
+	
+	const SDL2pp::Point title_pt{metadata_start.x + album_art_texture_present * (album_art_rect.w + 10), album_art_rect.y};
+	if (texture_opts.title_text.has_value())
+		sr.Copy(texture_opts.title_text.value(), SDL2pp::NullOpt, title_pt);
+	if (texture_opts.artist_text.has_value())
+		sr.Copy(texture_opts.artist_text.value(), SDL2pp::NullOpt, {title_pt.x, title_pt.y + 30});
 }
 
 void Visualizer::start()

@@ -9,17 +9,18 @@ Main::Main(const int argc, const char *const *const argv)
 	set_bar_width(get<uint>("-bw"));
 	set_bar_spacing(get<uint>("-bs"));
 	set_mono(get<int>("--mono"));
-	set_ffmpeg_path(get("--ffmpeg-path"));
 
-	try
-	{
-		set_background(get("--bg"));
-	}
-	catch (const std::logic_error &e)
-	{
-		if (!strstr(e.what(), "No value provided"))
-			throw;
-	}
+	// finally i realized what `present` does
+	// no need to try-catch on `get` anymore...
+
+	if (const auto ffmpeg_path = present("--ffmpeg-path"))
+		set_ffmpeg_path(ffmpeg_path.value());
+
+	if (const auto bg = present("--bg"))
+		set_background(bg.value());
+	
+	if (const auto album_art = present("--album-art"))
+		set_album_art(album_art.value());
 
 	{ // bar type
 		const auto &bt_str = get("-bt");

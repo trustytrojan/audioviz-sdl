@@ -31,11 +31,13 @@ protected:
 	// if nonnegative, forces a mono spectrum with the specified channel
 	int mono = -1;
 
-	// background image filepath
-	SDL2pp::Optional<SDL2pp::Texture> bg_texture_opt;
-
 	// text font
-	SDL2pp::Font font;
+	SDL2pp::Font font_large, font_small;
+
+	struct
+	{
+		SDL2pp::Optional<SDL2pp::Texture> bg, album_art, title_text, artist_text;
+	} texture_opts;
 
 	std::string ffmpeg_path = "ffmpeg";
 
@@ -68,6 +70,8 @@ public:
 	 * @param filepath path to image file, or empty string to disable background
 	 */
 	void set_background(const std::string &filepath);
+
+	void set_album_art(const std::string &filepath);
 
 	/**
 	 * Set the sample chunk size to use in internal calculations.
