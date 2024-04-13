@@ -49,7 +49,11 @@ void Visualizer::do_actual_rendering()
 	// still need to parameterize this
 	static const auto margin = 5;
 
-	sr.SetDrawColor().Clear();
+	// bg
+	if (texture_opts.bg.has_value())
+		sr.Copy(texture_opts.bg.value(), bg_texture_centered_max_width());
+	else
+		sr.SetDrawColor().Clear();
 
 	// default for stereo
 	if (sf.channels() == 2 && mono < 0)
@@ -73,36 +77,6 @@ void Visualizer::do_actual_rendering()
 		sr.copy_channel_to_input(audio_buffer.data(), sf.channels(), mono, false);
 		sr.render_spectrum(rect, false);
 	}
-
-	// apply shadow here (only if there is a background!)
-	SDL_Texture *shadowed_texture = NULL;
-	if (texture_opts.bg.has_value())
-	{
-		const auto surface = SDL_GetWindowSurface(window.Get());
-		const auto pixels = static_cast<SDL_Color *>(surface->pixels);
-		const auto num_pixels = width * height;
-		for (int i = 0; i < num_pixels; ++i)
-		{
-			if (!pixels[i].a)
-				continue;
-			if (i >= width && !pixels[i - width].a)
-				pixels[i - width].a = 100;
-			if (i >= 2 * width && !pixels[i - 2 * width].a)
-				pixels[i - 2 * width].a = 50;
-		}
-		shadowed_texture = SDL_CreateTextureFromSurface(sr.Get(), surface);
-		SDL_SetTextureBlendMode(shadowed_texture, SDL_BLENDMODE_BLEND);
-	}
-
-	// bg
-	if (texture_opts.bg.has_value())
-		sr.Copy(texture_opts.bg.value(), bg_texture_centered_max_width());
-	else
-		sr.SetDrawColor().Clear();
-	
-	// copy spectrum texture with shadow over
-	if (shadowed_texture)
-		SDL_RenderCopy(sr.Get(), shadowed_texture, NULL, NULL);
 
 	// metadata
 	const SDL2pp::Point metadata_start{40, 40};
