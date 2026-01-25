@@ -1,4 +1,6 @@
-# audioviz
+**2026-01-25:** this repo was made during my initial journey into audio visualization and 2D graphics. it now exists for archival purposes, and is superseded by [libavz](https://github.com/trustytrojan/libavz).
+
+# audioviz-sdl
 my own audio visualizer, because after effects sucks.<br>
 for right now, audioviz only supports linux, but with the libraries i'm using, it shouldn't be hard to port to windows.<br>
 here's a demo: https://youtu.be/0f_oSrnT6j0

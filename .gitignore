@@ -2,10 +2,12 @@ bin
 obj
 *.out
 *.o
-.vscode/settings.json
+.vscode
 Music
 vgcore*
 *.mkv
 *.mp4
 *.jpg
 media
+*.json
+.cache

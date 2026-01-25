@@ -102,8 +102,8 @@ void Visualizer::start()
 	// calculate the number of audio frames that fit in each video frame
 	SDL_DisplayMode mode;
 	window.GetDisplayMode(mode);
-	const auto avpvf = sf.samplerate() / mode.refresh_rate;
-	const int total_frames = sf.frames() / avpvf;
+	const auto afpvf = sf.samplerate() / mode.refresh_rate;
+	const int total_frames = sf.frames() / afpvf;
 
 	// for measuring render time
 	using namespace std::chrono;
@@ -141,7 +141,7 @@ void Visualizer::start()
 		// the only way to get around this is dynamically changing the stream's samplerate to match our render time, but that sounds horrible...
 		try
 		{
-			pa_stream.write(audio_buffer.data(), avpvf);
+			pa_stream.write(audio_buffer.data(), afpvf);
 		}
 		catch (const PortAudio::Error &e)
 		{
@@ -161,7 +161,7 @@ void Visualizer::start()
 		print_render_stats();
 
 		// seek audio file back
-		sf.seek(avpvf - sample_size, SEEK_CUR);
+		sf.seek(afpvf - sample_size, SEEK_CUR);
 	}
 
 	print_render_stats();
